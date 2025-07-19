@@ -262,8 +262,9 @@ void TetrisGame::drawInfo() const
             }
         }
 
-    int instructions_row = 12;
+    int instructions_row = 10;
     mvwprintw(sideWin, instructions_row++, 2, "Controls:");
+    mvwprintw(sideWin, instructions_row++, 2, "==========================");
     mvwprintw(sideWin, instructions_row++, 2, "Left/Right : Move");
     mvwprintw(sideWin, instructions_row++, 2, "Down       : Soft drop");
     mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
