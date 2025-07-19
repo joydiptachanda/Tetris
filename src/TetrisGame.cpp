@@ -66,6 +66,10 @@ TetrisGame::TetrisGame()
     : score(0), level(1), delay(500), frame(0), running(true),
       gameWin(nullptr), sideWin(nullptr)
 {
+    for (int i = 0; i < HEIGHT; ++i)
+        for (int j = 0; j < WIDTH; ++j)
+            field[i][j] = 0;
+
     setlocale(LC_ALL, "");
     srand((unsigned)time(0));
     for (int i = 0; i < HEIGHT; ++i)
@@ -196,18 +200,27 @@ void TetrisGame::drawBoard() const
             {
                 for (int dy = 0; dy < 4; ++dy)
                     for (int dx = 0; dx < 4; ++dx)
-                        if (tetromino[ghost.shape][ghost.rot][dy][dx] &&
-                            ghost.y + dy == i && ghost.x + dx == j)
+                    {
+                        int pi = ghost.y + dy, pj = ghost.x + dx;
+                        if (ghostValid && tetromino[ghost.shape][ghost.rot][dy][dx] &&
+                            pi == i && pj == j && pi >= 2)
+                        {
                             isGhost = true;
+                        }
+                    }
             }
             // Is this cell occupied by the current piece?
             if (ghostValid)
             {
                 for (int dy = 0; dy < 4; ++dy)
                     for (int dx = 0; dx < 4; ++dx)
-                        if (tetromino[curr.shape][curr.rot][dy][dx] &&
-                            curr.y + dy == i && curr.x + dx == j)
+                    {
+                        int pi = curr.y + dy, pj = curr.x + dx;
+                        if (tetromino[curr.shape][curr.rot][dy][dx] && pi == i && pj == j && pi >= 2)
+                        {
                             isCurrent = true;
+                        }
+                    }
             }
             // Draw logic
             if (isCurrent)
@@ -363,6 +376,7 @@ void TetrisGame::handleInput(int ch)
         break;
     case KEY_DOWN:
         ++temp.y;
+        score += 1; // Soft drop bonus
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
         break;
     case 'z':
@@ -374,13 +388,21 @@ void TetrisGame::handleInput(int ch)
         Logger::getInstance().log("Rotate right. rot=" + std::to_string(temp.rot));
         break;
     case ' ':
-        Logger::getInstance().log("Hard drop.");
+    {
+        int dropDistance = 0;
         while (check(temp))
+        {
             ++temp.y;
+            ++dropDistance;
+        }
         --temp.y;
+        --dropDistance;
         curr = temp;
-        Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y));
+        score += dropDistance * 2;
+        Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y) +
+                                  ", bonus: " + std::to_string(dropDistance * 2));
         break;
+    }
     case 'q':
         Logger::getInstance().log("Quit key pressed.");
         running = false;
