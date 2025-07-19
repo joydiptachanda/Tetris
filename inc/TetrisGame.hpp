@@ -1,6 +1,9 @@
 #pragma once
 #include <ncurses.h>
 #include <vector>
+#include <queue>
+#include <algorithm>
+#include <random>
 #include "Logger.hpp"
 
 class TetrisGame
@@ -27,7 +30,7 @@ private:
     bool paused;
     WINDOW *gameWin, *sideWin;
     Piece curr, next;
-
+    std::queue<int> pieceQueue; // For improved randomization
     // Implement "Hold Piece" Feature
     Piece hold;
     bool holdUsedThisTurn;
@@ -46,7 +49,7 @@ private:
     void handleInput(int ch);
     void applyGravity(int ch);
     void gameOver();
-
+    void refillBag(); // For improved randomization
     // Function to Find Ghost Position
     Piece getGhostPiece() const;
 };

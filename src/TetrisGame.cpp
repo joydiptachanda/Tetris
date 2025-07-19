@@ -51,6 +51,17 @@ const int TetrisGame::piece_color_ids[8] = {
     214  // L - Orange
 };
 
+// For improved randomization
+void TetrisGame::refillBag()
+{
+    std::vector<int> bag = {0, 1, 2, 3, 4, 5, 6};
+    static std::random_device rd;
+    static std::mt19937 g(rd());
+    std::shuffle(bag.begin(), bag.end(), g);
+    for (int i : bag)
+        pieceQueue.push(i);
+}
+
 TetrisGame::TetrisGame()
     : score(0), level(1), delay(500), frame(0), running(true),
       gameWin(nullptr), sideWin(nullptr)
@@ -75,8 +86,13 @@ TetrisGame::TetrisGame()
     holding = false;          // No held piece at start
     holdUsedThisTurn = false; // Can hold at the beginning
 
-    spawnPiece();
-    next = {rand() % 7, 0, WIDTH / 2 - 2, 0};
+    refillBag();
+    if (pieceQueue.empty())
+        refillBag();
+    int pieceType = pieceQueue.front();
+    pieceQueue.pop();
+    next = {pieceType, 0, WIDTH / 2 - 2, 0};
+
     paused = false;
     Logger::getInstance().log("Game initialized.");
 }
@@ -287,7 +303,12 @@ void TetrisGame::drawInfo() const
 void TetrisGame::spawnPiece()
 {
     curr = next;
-    next = {rand() % 7, 0, WIDTH / 2 - 2, 0};
+    if (pieceQueue.empty())
+        refillBag();
+    int pieceType = pieceQueue.front();
+    pieceQueue.pop();
+    next = {pieceType, 0, WIDTH / 2 - 2, 0};
+
     // Implement "Hold Piece" Feature
     holdUsedThisTurn = false;
     Logger::getInstance().log("Spawning piece: " + std::to_string(curr.shape) +

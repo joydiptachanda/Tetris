@@ -1,3 +1,4 @@
 build/
 compile.sh
 features.txt
+.vscode
