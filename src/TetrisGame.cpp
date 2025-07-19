@@ -69,7 +69,11 @@ TetrisGame::TetrisGame()
     keypad(stdscr, TRUE);
 
     gameWin = newwin(VISIBLE_HEIGHT + 2, WIDTH * 2 + 2, 1, 2);
-    sideWin = newwin(VISIBLE_HEIGHT + 2, 32, 1, WIDTH * 2 + 4);
+    sideWin = newwin(VISIBLE_HEIGHT + 2, 30, 1, WIDTH * 2 + 4);
+
+    // Implement "Hold Piece" Feature
+    holding = false;          // No held piece at start
+    holdUsedThisTurn = false; // Can hold at the beginning
 
     spawnPiece();
     next = {rand() % 7, 0, WIDTH / 2 - 2, 0};
@@ -94,6 +98,8 @@ void TetrisGame::initColors256()
 
 bool TetrisGame::check(const Piece &p) const
 {
+    if (p.shape < 0 || p.shape >= 7 || p.rot < 0 || p.rot >= 4)
+        return false;
     for (int dy = 0; dy < 4; ++dy)
         for (int dx = 0; dx < 4; ++dx)
             if (tetromino[p.shape][p.rot][dy][dx])
@@ -109,6 +115,8 @@ bool TetrisGame::check(const Piece &p) const
 
 void TetrisGame::merge(const Piece &p)
 {
+    if (p.shape < 0 || p.shape >= 7 || p.rot < 0 || p.rot >= 4)
+        return;
     for (int dy = 0; dy < 4; ++dy)
         for (int dx = 0; dx < 4; ++dx)
             if (tetromino[p.shape][p.rot][dy][dx])
@@ -158,6 +166,7 @@ void TetrisGame::drawBoard() const
 
     // Draw the board, ghost, and current piece
     Piece ghost = getGhostPiece();
+    bool ghostValid = (ghost.shape >= 0 && ghost.shape < 7 && ghost.rot >= 0 && ghost.rot < 4);
 
     for (int i = 2; i < HEIGHT; ++i)
     {
@@ -167,19 +176,23 @@ void TetrisGame::drawBoard() const
             bool isGhost = false, isCurrent = false;
 
             // Is this cell occupied by the ghost piece?
-            for (int dy = 0; dy < 4; ++dy)
-                for (int dx = 0; dx < 4; ++dx)
-                    if (tetromino[ghost.shape][ghost.rot][dy][dx] &&
-                        ghost.y + dy == i && ghost.x + dx == j)
-                        isGhost = true;
-
+            if (ghostValid)
+            {
+                for (int dy = 0; dy < 4; ++dy)
+                    for (int dx = 0; dx < 4; ++dx)
+                        if (tetromino[ghost.shape][ghost.rot][dy][dx] &&
+                            ghost.y + dy == i && ghost.x + dx == j)
+                            isGhost = true;
+            }
             // Is this cell occupied by the current piece?
-            for (int dy = 0; dy < 4; ++dy)
-                for (int dx = 0; dx < 4; ++dx)
-                    if (tetromino[curr.shape][curr.rot][dy][dx] &&
-                        curr.y + dy == i && curr.x + dx == j)
-                        isCurrent = true;
-
+            if (ghostValid)
+            {
+                for (int dy = 0; dy < 4; ++dy)
+                    for (int dx = 0; dx < 4; ++dx)
+                        if (tetromino[curr.shape][curr.rot][dy][dx] &&
+                            curr.y + dy == i && curr.x + dx == j)
+                            isCurrent = true;
+            }
             // Draw logic
             if (isCurrent)
             {
@@ -214,41 +227,54 @@ void TetrisGame::drawInfo() const
     werase(sideWin);
     box(sideWin, 0, 0);
 
-    // Score and Level
     mvwprintw(sideWin, 1, 2, "Score: %d", score);
     mvwprintw(sideWin, 2, 2, "Level: %d", level);
 
-    // Next piece label
     mvwprintw(sideWin, 4, 2, "Next:");
-
-    // Next piece preview
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
-            if (tetromino[next.shape][0][y][x])
+        {
+            if (next.shape >= 0 && next.shape < 7 && tetromino[next.shape][0][y][x])
             {
                 wattron(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 6 + y, x * 2 + 2, "  ");
+                mvwprintw(sideWin, 6 + y, 2 + x * 2, "  ");
                 wattroff(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
             }
             else
             {
-                mvwprintw(sideWin, 6 + y, x * 2 + 2, "  ");
+                mvwprintw(sideWin, 6 + y, 2 + x * 2, "  ");
             }
+        }
 
-    // Instructions (controls)
-    int instructions_row = 11;
+    mvwprintw(sideWin, 4, 14, "Hold:");
+    for (int y = 0; y < 4; ++y)
+        for (int x = 0; x < 4; ++x)
+        {
+            if (holding && hold.shape >= 0 && hold.shape < 7 && tetromino[hold.shape][0][y][x])
+            {
+                wattron(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
+                mvwprintw(sideWin, 6 + y, 14 + x * 2, "  ");
+                wattroff(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
+            }
+            else
+            {
+                mvwprintw(sideWin, 6 + y, 14 + x * 2, "  ");
+            }
+        }
+
+    int instructions_row = 12;
     mvwprintw(sideWin, instructions_row++, 2, "Controls:");
     mvwprintw(sideWin, instructions_row++, 2, "Left/Right : Move");
     mvwprintw(sideWin, instructions_row++, 2, "Down       : Soft drop");
     mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
     mvwprintw(sideWin, instructions_row++, 2, "Space      : Hard drop");
+    mvwprintw(sideWin, instructions_row++, 2, "C          : Hold Piece");
     mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
     mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
 
-    // pause functionality
     if (paused)
     {
-        int info_row = 18;
+        int info_row = instructions_row + 1;
         wattron(sideWin, A_BOLD);
         mvwprintw(sideWin, info_row, 2, "-- PAUSED --");
         wattroff(sideWin, A_BOLD);
@@ -261,6 +287,8 @@ void TetrisGame::spawnPiece()
 {
     curr = next;
     next = {rand() % 7, 0, WIDTH / 2 - 2, 0};
+    // Implement "Hold Piece" Feature
+    holdUsedThisTurn = false;
     Logger::getInstance().log("Spawning piece: " + std::to_string(curr.shape) +
                               " at x=" + std::to_string(curr.x) + ", y=" + std::to_string(curr.y));
 }
@@ -273,6 +301,27 @@ void TetrisGame::handleInput(int ch)
         paused = !paused;
         Logger::getInstance().log(paused ? "Game paused." : "Game resumed.");
         return; // Prevent other moves while toggling pause
+    }
+
+    // Implement "Hold Piece" Feature
+    if ((ch == 'c' || ch == 'C') && !holdUsedThisTurn)
+    {
+        Logger::getInstance().log("Hold key pressed.");
+        if (!holding)
+        {
+            hold = curr;
+            holding = true;
+            spawnPiece();
+        }
+        else
+        {
+            std::swap(curr, hold);
+            curr.x = WIDTH / 2 - 2;
+            curr.y = 0;
+            curr.rot = 0;
+        }
+        holdUsedThisTurn = true;
+        return;
     }
 
     // If paused, ignore ALL other inputs

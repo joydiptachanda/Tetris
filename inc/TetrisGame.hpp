@@ -23,10 +23,15 @@ private:
     int field[HEIGHT][WIDTH];
     int score, level, delay, frame;
     bool running;
-    //pause feature
+    // pause feature
     bool paused;
     WINDOW *gameWin, *sideWin;
     Piece curr, next;
+
+    // Implement "Hold Piece" Feature
+    Piece hold;
+    bool holdUsedThisTurn;
+    bool holding;
 
     static const int piece_color_ids[8];
     static const char tetromino[7][4][4][4];
@@ -42,6 +47,6 @@ private:
     void applyGravity(int ch);
     void gameOver();
 
-    //Function to Find Ghost Position
+    // Function to Find Ghost Position
     Piece getGhostPiece() const;
 };
