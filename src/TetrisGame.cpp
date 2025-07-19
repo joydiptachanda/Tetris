@@ -141,22 +141,59 @@ int TetrisGame::clearLines()
     return lines;
 }
 
+// Function to Find Ghost Position
+TetrisGame::Piece TetrisGame::getGhostPiece() const
+{
+    Piece ghost = curr;
+    while (check(ghost))
+        ++ghost.y;
+    --ghost.y;
+    return ghost;
+}
+
 void TetrisGame::drawBoard() const
 {
     werase(gameWin);
     box(gameWin, 0, 0);
+
+    // Draw the board, ghost, and current piece
+    Piece ghost = getGhostPiece();
 
     for (int i = 2; i < HEIGHT; ++i)
     {
         for (int j = 0; j < WIDTH; ++j)
         {
             int cell = field[i][j];
+            bool isGhost = false, isCurrent = false;
+
+            // Is this cell occupied by the ghost piece?
+            for (int dy = 0; dy < 4; ++dy)
+                for (int dx = 0; dx < 4; ++dx)
+                    if (tetromino[ghost.shape][ghost.rot][dy][dx] &&
+                        ghost.y + dy == i && ghost.x + dx == j)
+                        isGhost = true;
+
+            // Is this cell occupied by the current piece?
             for (int dy = 0; dy < 4; ++dy)
                 for (int dx = 0; dx < 4; ++dx)
                     if (tetromino[curr.shape][curr.rot][dy][dx] &&
                         curr.y + dy == i && curr.x + dx == j)
-                        cell = curr.shape + 1;
-            if (cell)
+                        isCurrent = true;
+
+            // Draw logic
+            if (isCurrent)
+            {
+                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE);
+                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
+                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE);
+            }
+            else if (isGhost && !cell)
+            {
+                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM);
+                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "::");
+                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM);
+            }
+            else if (cell)
             {
                 wattron(gameWin, COLOR_PAIR(cell) | A_REVERSE);
                 mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
@@ -168,6 +205,7 @@ void TetrisGame::drawBoard() const
             }
         }
     }
+
     wnoutrefresh(gameWin);
 }
 
@@ -275,7 +313,7 @@ void TetrisGame::handleInput(int ch)
     case 'q':
         Logger::getInstance().log("Quit key pressed.");
         running = false;
-        return; //added instead of break to no longer see log entries after "Quit key pressed."
+        return; // added instead of break to no longer see log entries after "Quit key pressed."
     }
     if (check(temp) && ch != ' ')
     {

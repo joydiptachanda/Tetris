@@ -41,4 +41,7 @@ private:
     void handleInput(int ch);
     void applyGravity(int ch);
     void gameOver();
+
+    //Function to Find Ghost Position
+    Piece getGhostPiece() const;
 };
