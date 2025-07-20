@@ -75,7 +75,7 @@ void TetrisGame::refillBag()
 TetrisGame::TetrisGame()
     : score(0), level(1), delay(500), frame(0), running(true),
       gameWin(nullptr), sideWin(nullptr),
-      hardDropped(false)
+      hardDropped(false), boardDirty(true), infoDirty(true)
 {
     field = {};
 
@@ -107,6 +107,7 @@ TetrisGame::TetrisGame()
     next = {pieceType, 0, WIDTH / 2 - 2, 0};
 
     paused = false;
+    boardDirty = infoDirty = true;
     Logger::getInstance().log("Game initialized.");
 }
 
@@ -367,35 +368,54 @@ void TetrisGame::spawnPiece()
 
 void TetrisGame::handleInput(int ch)
 {
+    bool didMove = false;
+    bool didRotate = false;
+    bool didDrop = false;
+
     if (handlePauseKey(ch))
+    {
+        infoDirty = true;
         return;
+    }
     if (handleHoldKey(ch))
+    {
+        infoDirty = true;
         return;
+    }
     if (handleClearHighscoreKey(ch))
+    {
+        infoDirty = true;
         return;
+    }
     if (handleQuitKey(ch))
         return;
     if (handleRestartKey(ch))
+    {
+        boardDirty = infoDirty = true;
         return;
+    }
 
     if (paused)
-        return; // Ignore all other inputs when paused
+        return;
 
     Piece temp = curr;
 
     if (handleMoveKey(ch, temp))
     {
         curr = temp;
+        boardDirty = true;
         return;
     }
     if (handleRotateKey(ch, temp))
     {
         curr = temp;
+        boardDirty = true;
         return;
     }
     if (handleDropKey(ch, temp))
     {
         curr = temp;
+        boardDirty = true;
         return;
     }
 }
@@ -405,6 +425,7 @@ bool TetrisGame::handlePauseKey(int ch)
     if (ch == 'p' || ch == 'P')
     {
         paused = !paused;
+        infoDirty = true;
         Logger::getInstance().log(paused ? "Game paused." : "Game resumed.");
         return true;
     }
@@ -430,6 +451,7 @@ bool TetrisGame::handleHoldKey(int ch)
             curr.rot = 0;
         }
         holdUsedThisTurn = true;
+        infoDirty = true;
         return true;
     }
     return false;
@@ -445,6 +467,7 @@ bool TetrisGame::handleClearHighscoreKey(int ch)
             highscore_score = 0;
             saveHighscore();
             Logger::getInstance().log("Highscore cleared by user.");
+            infoDirty = true;
         }
         return true;
     }
@@ -492,6 +515,7 @@ bool TetrisGame::handleRestartKey(int ch)
             pieceQueue.pop();
             next = {pieceType, 0, WIDTH / 2 - 2, 0};
             spawnPiece();
+            boardDirty = infoDirty = true;
             Logger::getInstance().log("Game restarted by user.");
         }
         else
@@ -518,6 +542,7 @@ bool TetrisGame::handleMoveKey(int ch, Piece &temp)
     case KEY_DOWN:
         ++temp.y;
         score += 1;
+        infoDirty = true;
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
         break;
     default:
@@ -595,6 +620,8 @@ bool TetrisGame::handleDropKey(int ch, Piece &temp)
     --dropDistance;
     curr = temp;
     score += dropDistance * 2;
+    infoDirty = true;
+    boardDirty = true;
     Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y) +
                               ", bonus: " + std::to_string(dropDistance * 2));
     hardDropped = true;
@@ -608,39 +635,17 @@ void TetrisGame::applyGravity(int ch)
     {
         Logger::getInstance().log("Piece instantly merged from hard drop.");
         merge(curr);
+        boardDirty = true;
         int lines = clearLines();
         if (lines > 0)
-        {
-            int points = 0;
-            switch (lines)
-            {
-            case 1:
-                points = 100 * level;
-                break;
-            case 2:
-                points = 300 * level;
-                break;
-            case 3:
-                points = 500 * level;
-                break;
-            case 4:
-                points = 800 * level;
-                break;
-            default:
-                points = lines * 100 * level;
-                break;
-            }
-            score += points;
-            Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
-            Logger::getInstance().log("Score: " + std::to_string(score));
-            level = score / 500 + 1;
-            delay = std::max(100, 500 - (level - 1) * 40);
-            Logger::getInstance().log("Level: " + std::to_string(level) + ", Delay: " + std::to_string(delay));
-        }
+            infoDirty = true;
         spawnPiece();
+        infoDirty = true; // Next/hold panel may change
         if (!check(curr))
         {
             Logger::getInstance().log("Game Over: spawn not possible.");
+            infoDirty = true;
+            boardDirty = true;
             gameOver();
         }
         hardDropped = false;
@@ -656,6 +661,7 @@ void TetrisGame::applyGravity(int ch)
         if (check(fall))
         {
             curr = fall;
+            boardDirty = true;
             Logger::getInstance().log("Piece falls to y=" + std::to_string(curr.y));
         }
         else
@@ -663,41 +669,16 @@ void TetrisGame::applyGravity(int ch)
             Logger::getInstance().log("Piece cannot fall; merging at (x=" +
                                       std::to_string(curr.x) + ", y=" + std::to_string(curr.y) + ")");
             merge(curr);
+            boardDirty = true;
             int lines = clearLines();
             if (lines > 0)
-            {
-                int points = 0;
-                switch (lines)
-                {
-                case 1:
-                    points = 100 * level;
-                    break;
-                case 2:
-                    points = 300 * level;
-                    break;
-                case 3:
-                    points = 500 * level;
-                    break;
-                case 4:
-                    points = 800 * level;
-                    break;
-                default:
-                    points = lines * 100 * level;
-                    break; // fallback
-                }
-                score += points;
-                Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
-                Logger::getInstance().log("Score: " + std::to_string(score));
-                level = score / 500 + 1;
-                delay = std::max(100, 500 - (level - 1) * 40);
-                Logger::getInstance().log("Level: " + std::to_string(level) +
-                                          ", Delay: " + std::to_string(delay));
-            }
-
+                infoDirty = true;
             spawnPiece();
+            infoDirty = true;
             if (!check(curr))
             {
                 Logger::getInstance().log("Game Over: spawn not possible.");
+                infoDirty = boardDirty = true;
                 gameOver();
             }
         }
@@ -792,6 +773,7 @@ void TetrisGame::gameOver()
             strcpy(name_buf, "---");
         highscore_name = name_buf;
         highscore_score = score;
+        infoDirty = true;
         saveHighscore();
         Logger::getInstance().log(std::string("Name entered: [") + name_buf + "]");
         move(HEIGHT + 1, WIDTH * 2 + 5);
@@ -800,6 +782,8 @@ void TetrisGame::gameOver()
 
         nodelay(stdscr, TRUE); // Set back to non-blocking for rest of game
     }
+    infoDirty = true;
+    boardDirty = true;
 
     mvprintw(HEIGHT, WIDTH * 2 + 5, "GAME OVER! Press R=Restart, Q=Quit...");
     nodelay(stdscr, FALSE);
@@ -852,17 +836,24 @@ void TetrisGame::gameOver()
 
 void TetrisGame::run()
 {
+    boardDirty = true;
+    infoDirty = true;
     while (running)
     {
         usleep(30 * 1000);
         int ch = getch();
+
         handleInput(ch);
         if (!paused)
-        {
             applyGravity(ch);
-        }
-        drawBoard();
-        drawInfo();
+
+        if (boardDirty)
+            drawBoard();
+        if (infoDirty)
+            drawInfo();
         doupdate();
+
+        boardDirty = false;
+        infoDirty = false;
     }
 }

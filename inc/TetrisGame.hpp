@@ -45,6 +45,9 @@ private:
     int highscore_score;
     bool hardDropped;
 
+    bool boardDirty = true;
+    bool infoDirty = true;
+
     // Use std::array for color and tetromino data
     static const std::array<int, 8> piece_color_ids;
     static const std::array<std::array<std::array<std::array<char, 4>, 4>, 4>, 7> tetromino;
