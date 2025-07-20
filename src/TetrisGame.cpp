@@ -380,13 +380,63 @@ void TetrisGame::handleInput(int ch)
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
         break;
     case 'z':
-        temp.rot = (temp.rot + 3) % 4;
-        Logger::getInstance().log("Rotate left. rot=" + std::to_string(temp.rot));
-        break;
     case 'x':
-        temp.rot = (temp.rot + 1) % 4;
-        Logger::getInstance().log("Rotate right. rot=" + std::to_string(temp.rot));
+    {
+        int old_rot = temp.rot;
+        temp.rot = (ch == 'z') ? (temp.rot + 3) % 4 : (temp.rot + 1) % 4;
+
+        bool kicked = false;
+        if (curr.shape == 0)
+        { // I piece
+            const int kick_offsets[][2] = {
+                {0, 0},
+                {1, 0},
+                {-1, 0},
+                {-2, 0},
+                {2, 0},
+                {0, -1},
+                {0, 1}};
+            for (const auto &offset : kick_offsets)
+            {
+                Piece kicked_temp = temp;
+                kicked_temp.x += offset[0];
+                kicked_temp.y += offset[1];
+                if (check(kicked_temp))
+                {
+                    temp = kicked_temp;
+                    kicked = true;
+                    break;
+                }
+            }
+        }
+        else
+        { // Other pieces
+            const int kick_offsets[][2] = {
+                {0, 0},
+                {1, 0},
+                {-1, 0},
+                {0, -1},
+                {0, 1}};
+            for (const auto &offset : kick_offsets)
+            {
+                Piece kicked_temp = temp;
+                kicked_temp.x += offset[0];
+                kicked_temp.y += offset[1];
+                if (check(kicked_temp))
+                {
+                    temp = kicked_temp;
+                    kicked = true;
+                    break;
+                }
+            }
+        }
+        if (!kicked)
+            temp.rot = old_rot;
+        Logger::getInstance().log(
+            std::string("Rotate ") + (ch == 'z' ? "left" : "right") +
+            ", wall kick, rot=" + std::to_string(temp.rot));
         break;
+    }
     case ' ':
     {
         int dropDistance = 0;
