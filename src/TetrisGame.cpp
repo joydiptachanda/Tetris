@@ -77,9 +77,7 @@ TetrisGame::TetrisGame()
       gameWin(nullptr), sideWin(nullptr),
       hardDropped(false)
 {
-    for (int i = 0; i < HEIGHT; ++i)
-        for (int j = 0; j < WIDTH; ++j)
-            field[i][j] = 0;
+    field = {};
 
     setlocale(LC_ALL, "");
     srand((unsigned)time(0));
@@ -162,21 +160,17 @@ int TetrisGame::clearLines()
     int lines = 0;
     for (int i = HEIGHT - 1; i >= 0; i--)
     {
-        bool full = true;
-        for (int j = 0; j < WIDTH; ++j)
-            if (!field[i][j])
-                full = false;
-        if (full)
+        if (std::all_of(field[i].begin(), field[i].end(), [](int x)
+                        { return x != 0; }))
         {
             ++lines;
             for (int k = i; k > 0; --k)
-                for (int j = 0; j < WIDTH; ++j)
-                    field[k][j] = field[k - 1][j];
-            for (int j = 0; j < WIDTH; ++j)
-                field[0][j] = 0;
+                field[k] = field[k - 1];
+            field[0] = {};
             ++i;
         }
     }
+
     return lines;
 }
 
@@ -194,12 +188,16 @@ void TetrisGame::drawBoard() const
 {
     werase(gameWin);
     box(gameWin, 0, 0);
+    auto ghostMasks = computeGhostMask();
+    auto currMasks = computeCurrentMask();
+    drawCells(ghostMasks, currMasks);
+    wnoutrefresh(gameWin);
+}
 
-    // Precompute masks for ghost and current piece cells
-    bool isGhostCell[HEIGHT][WIDTH] = {};
-    bool isCurrCell[HEIGHT][WIDTH] = {};
-
-    // Precompute ghost piece once
+std::array<std::array<bool, TetrisGame::WIDTH>, TetrisGame::HEIGHT>
+TetrisGame::computeGhostMask() const
+{
+    std::array<std::array<bool, WIDTH>, HEIGHT> ghostMask{};
     const Piece ghost = getGhostPiece();
     for (int dy = 0; dy < 4; ++dy)
         for (int dx = 0; dx < 4; ++dx)
@@ -208,10 +206,15 @@ void TetrisGame::drawBoard() const
             {
                 int ny = ghost.y + dy, nx = ghost.x + dx;
                 if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
-                    isGhostCell[ny][nx] = true;
+                    ghostMask[ny][nx] = true;
             }
+    return ghostMask;
+}
 
-    // Precompute current piece
+std::array<std::array<bool, TetrisGame::WIDTH>, TetrisGame::HEIGHT>
+TetrisGame::computeCurrentMask() const
+{
+    std::array<std::array<bool, WIDTH>, HEIGHT> currMask{};
     for (int dy = 0; dy < 4; ++dy)
         for (int dx = 0; dx < 4; ++dx)
             if (curr.shape >= 0 && curr.shape < 7 && curr.rot >= 0 && curr.rot < 4 &&
@@ -219,10 +222,15 @@ void TetrisGame::drawBoard() const
             {
                 int ny = curr.y + dy, nx = curr.x + dx;
                 if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
-                    isCurrCell[ny][nx] = true;
+                    currMask[ny][nx] = true;
             }
+    return currMask;
+}
 
-    // Draw the board
+void TetrisGame::drawCells(
+    const std::array<std::array<bool, WIDTH>, HEIGHT> &isGhostCell,
+    const std::array<std::array<bool, WIDTH>, HEIGHT> &isCurrCell) const
+{
     for (int i = 2; i < HEIGHT; ++i)
     {
         for (int j = 0; j < WIDTH; ++j)
@@ -255,8 +263,6 @@ void TetrisGame::drawBoard() const
             }
         }
     }
-
-    wnoutrefresh(gameWin);
 }
 
 void TetrisGame::drawInfo() const
@@ -341,15 +347,52 @@ void TetrisGame::spawnPiece()
 
 void TetrisGame::handleInput(int ch)
 {
-    // First: handle pause toggle IMMEDIATELY
+    if (handlePauseKey(ch))
+        return;
+    if (handleHoldKey(ch))
+        return;
+    if (handleClearHighscoreKey(ch))
+        return;
+    if (handleQuitKey(ch))
+        return;
+    if (handleRestartKey(ch))
+        return;
+
+    if (paused)
+        return; // Ignore all other inputs when paused
+
+    Piece temp = curr;
+
+    if (handleMoveKey(ch, temp))
+    {
+        curr = temp;
+        return;
+    }
+    if (handleRotateKey(ch, temp))
+    {
+        curr = temp;
+        return;
+    }
+    if (handleDropKey(ch, temp))
+    {
+        curr = temp;
+        return;
+    }
+}
+
+bool TetrisGame::handlePauseKey(int ch)
+{
     if (ch == 'p' || ch == 'P')
     {
         paused = !paused;
         Logger::getInstance().log(paused ? "Game paused." : "Game resumed.");
-        return; // Prevent other moves while toggling pause
+        return true;
     }
+    return false;
+}
 
-    // Implement "Hold Piece" Feature
+bool TetrisGame::handleHoldKey(int ch)
+{
     if ((ch == 'c' || ch == 'C') && !holdUsedThisTurn)
     {
         Logger::getInstance().log("Hold key pressed.");
@@ -367,10 +410,13 @@ void TetrisGame::handleInput(int ch)
             curr.rot = 0;
         }
         holdUsedThisTurn = true;
-        return;
+        return true;
     }
+    return false;
+}
 
-    // Implement "Clear highscore" Feature
+bool TetrisGame::handleClearHighscoreKey(int ch)
+{
     if ((ch == 'h' || ch == 'H'))
     {
         if (confirmAction("Clear highscore?"))
@@ -380,9 +426,13 @@ void TetrisGame::handleInput(int ch)
             saveHighscore();
             Logger::getInstance().log("Highscore cleared by user.");
         }
-        return;
+        return true;
     }
+    return false;
+}
 
+bool TetrisGame::handleQuitKey(int ch)
+{
     if ((ch == 'q' || ch == 'Q') && !paused)
     {
         if (confirmAction("Quit game?"))
@@ -394,17 +444,19 @@ void TetrisGame::handleInput(int ch)
         {
             Logger::getInstance().log("Quit cancelled by user.");
         }
-        return;
+        return true;
     }
+    return false;
+}
+
+bool TetrisGame::handleRestartKey(int ch)
+{
     if ((ch == 'r' || ch == 'R') && !paused)
     {
         if (confirmAction("Restart game?"))
         {
             Logger::getInstance().log("Restart key pressed (confirmed).");
-            // Game state reset (as in your restart handler)
-            for (int i = 0; i < HEIGHT; ++i)
-                for (int j = 0; j < WIDTH; ++j)
-                    field[i][j] = 0;
+            field = {};
             score = 0;
             level = 1;
             delay = 500;
@@ -426,14 +478,13 @@ void TetrisGame::handleInput(int ch)
         {
             Logger::getInstance().log("Restart cancelled by user.");
         }
-        return;
+        return true;
     }
+    return false;
+}
 
-    // If paused, ignore ALL other inputs
-    if (paused)
-        return;
-
-    Piece temp = curr;
+bool TetrisGame::handleMoveKey(int ch, Piece &temp)
+{
     switch (ch)
     {
     case KEY_LEFT:
@@ -446,96 +497,88 @@ void TetrisGame::handleInput(int ch)
         break;
     case KEY_DOWN:
         ++temp.y;
-        score += 1; // Soft drop bonus
+        score += 1;
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
         break;
-    case 'z':
-    case 'x':
+    default:
+        return false;
+    }
+    if (check(temp))
     {
-        int old_rot = temp.rot;
-        temp.rot = (ch == 'z') ? (temp.rot + 3) % 4 : (temp.rot + 1) % 4;
+        Logger::getInstance().log("Piece moved to (x=" + std::to_string(temp.x) +
+                                  ", y=" + std::to_string(temp.y) +
+                                  ", rot=" + std::to_string(temp.rot) + ")");
+        return true;
+    }
+    return false;
+}
 
-        bool kicked = false;
-        if (curr.shape == 0)
-        { // I piece
-            const int kick_offsets[][2] = {
-                {0, 0},
-                {1, 0},
-                {-1, 0},
-                {-2, 0},
-                {2, 0},
-                {0, -1},
-                {0, 1}};
-            for (const auto &offset : kick_offsets)
-            {
-                Piece kicked_temp = temp;
-                kicked_temp.x += offset[0];
-                kicked_temp.y += offset[1];
-                if (check(kicked_temp))
-                {
-                    temp = kicked_temp;
-                    kicked = true;
-                    break;
-                }
-            }
-        }
-        else
-        { // Other pieces
-            const int kick_offsets[][2] = {
-                {0, 0},
-                {1, 0},
-                {-1, 0},
-                {0, -1},
-                {0, 1}};
-            for (const auto &offset : kick_offsets)
-            {
-                Piece kicked_temp = temp;
-                kicked_temp.x += offset[0];
-                kicked_temp.y += offset[1];
-                if (check(kicked_temp))
-                {
-                    temp = kicked_temp;
-                    kicked = true;
-                    break;
-                }
-            }
-        }
-        if (!kicked)
-            temp.rot = old_rot;
-        Logger::getInstance().log(
-            std::string("Rotate ") + (ch == 'z' ? "left" : "right") +
-            ", wall kick, rot=" + std::to_string(temp.rot));
-        break;
-    }
-    case ' ':
-    {
-        int dropDistance = 0;
-        while (check(temp))
+bool TetrisGame::handleRotateKey(int ch, Piece &temp)
+{
+    if (ch != 'z' && ch != 'x')
+        return false;
+    int old_rot = temp.rot;
+    temp.rot = (ch == 'z') ? (temp.rot + 3) % 4 : (temp.rot + 1) % 4;
+    bool kicked = false;
+    if (curr.shape == 0)
+    { // I piece
+        const int kick_offsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {-2, 0}, {2, 0}, {0, -1}, {0, 1}};
+        for (const auto &o : kick_offsets)
         {
-            ++temp.y;
-            ++dropDistance;
+            Piece ktemp = temp;
+            ktemp.x += o[0];
+            ktemp.y += o[1];
+            if (check(ktemp))
+            {
+                temp = ktemp;
+                kicked = true;
+                break;
+            }
         }
-        --temp.y;
-        --dropDistance;
-        curr = temp;
-        score += dropDistance * 2;
-        Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y) +
-                                  ", bonus: " + std::to_string(dropDistance * 2));
-        hardDropped = true;
-        break;
     }
-    case 'q':
-        Logger::getInstance().log("Quit key pressed.");
-        running = false;
-        return; // added instead of break to no longer see log entries after "Quit key pressed."
-    }
-    if (check(temp) && ch != ' ')
+    else
     {
-        curr = temp;
-        Logger::getInstance().log("Piece moved to (x=" +
-                                  std::to_string(curr.x) + ", y=" + std::to_string(curr.y) +
-                                  ", rot=" + std::to_string(curr.rot) + ")");
+        const int kick_offsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {0, -1}, {0, 1}};
+        for (const auto &o : kick_offsets)
+        {
+            Piece ktemp = temp;
+            ktemp.x += o[0];
+            ktemp.y += o[1];
+            if (check(ktemp))
+            {
+                temp = ktemp;
+                kicked = true;
+                break;
+            }
+        }
     }
+    if (!kicked)
+        temp.rot = old_rot;
+    Logger::getInstance().log(std::string("Rotate ") + (ch == 'z' ? "left" : "right") +
+                              ", wall kick, rot=" + std::to_string(temp.rot));
+    if (check(temp))
+        return true;
+    return false;
+}
+
+bool TetrisGame::handleDropKey(int ch, Piece &temp)
+{
+    if (ch != ' ')
+        return false;
+    int dropDistance = 0;
+    while (check(temp))
+    {
+        ++temp.y;
+        ++dropDistance;
+    }
+    --temp.y;
+    --dropDistance;
+    curr = temp;
+    score += dropDistance * 2;
+    Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y) +
+                              ", bonus: " + std::to_string(dropDistance * 2));
+    hardDropped = true;
+    return true;
 }
 
 void TetrisGame::applyGravity(int ch)

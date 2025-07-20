@@ -53,10 +53,28 @@ private:
     bool check(const Piece &p) const;
     void merge(const Piece &p);
     int clearLines();
+
     void drawBoard() const;
+    std::array<std::array<bool, WIDTH>, HEIGHT> computeGhostMask() const;
+    std::array<std::array<bool, WIDTH>, HEIGHT> computeCurrentMask() const;
+    void drawCells(
+        const std::array<std::array<bool, WIDTH>, HEIGHT> &isGhostCell,
+        const std::array<std::array<bool, WIDTH>, HEIGHT> &isCurrCell) const;
+
     void drawInfo() const;
     void spawnPiece();
+
     void handleInput(int ch);
+    // Helpers for handleInput breakdown:
+    bool handlePauseKey(int ch);
+    bool handleHoldKey(int ch);
+    bool handleClearHighscoreKey(int ch);
+    bool handleQuitKey(int ch);
+    bool handleRestartKey(int ch);
+    bool handleMoveKey(int ch, Piece &temp);
+    bool handleRotateKey(int ch, Piece &temp);
+    bool handleDropKey(int ch, Piece &temp);
+
     void applyGravity(int ch);
     void gameOver();
     void refillBag();
