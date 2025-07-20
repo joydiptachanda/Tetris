@@ -2,6 +2,7 @@
 #include <locale.h>
 #include <unistd.h>
 #include <cstdlib>
+#include <cstring>
 
 const char TetrisGame::tetromino[7][4][4][4] = {
     // I
@@ -84,7 +85,9 @@ TetrisGame::TetrisGame()
     keypad(stdscr, TRUE);
 
     gameWin = newwin(VISIBLE_HEIGHT + 2, WIDTH * 2 + 2, 1, 2);
-    sideWin = newwin(VISIBLE_HEIGHT + 2, 30, 1, WIDTH * 2 + 4);
+    sideWin = newwin(VISIBLE_HEIGHT + 2, 35, 1, WIDTH * 2 + 4);
+
+    loadHighscore();
 
     // Implement "Hold Piece" Feature
     holding = false;          // No held piece at start
@@ -293,13 +296,14 @@ void TetrisGame::drawInfo() const
 
     int instructions_row = 10;
     mvwprintw(sideWin, instructions_row++, 2, "Controls:");
-    mvwprintw(sideWin, instructions_row++, 2, "==========================");
+    mvwprintw(sideWin, instructions_row++, 2, "=============================");
     mvwprintw(sideWin, instructions_row++, 2, "Left/Right : Move");
     mvwprintw(sideWin, instructions_row++, 2, "Down       : Soft drop");
     mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
     mvwprintw(sideWin, instructions_row++, 2, "Space      : Hard drop");
     mvwprintw(sideWin, instructions_row++, 2, "C          : Hold Piece");
     mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
+    mvwprintw(sideWin, instructions_row++, 2, "H          : Clear Highscore");
     mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
 
     if (paused)
@@ -309,6 +313,8 @@ void TetrisGame::drawInfo() const
         mvwprintw(sideWin, info_row, 2, "-- PAUSED --");
         wattroff(sideWin, A_BOLD);
     }
+
+    mvwprintw(sideWin, 3, 2, "Highscore: %s %d", highscore_name.c_str(), highscore_score);
 
     wnoutrefresh(sideWin);
 }
@@ -356,6 +362,19 @@ void TetrisGame::handleInput(int ch)
             curr.rot = 0;
         }
         holdUsedThisTurn = true;
+        return;
+    }
+
+    // Implement "Clear highscore" Feature
+    if ((ch == 'h' || ch == 'H'))
+    {
+        if (confirmAction("Clear highscore?"))
+        {
+            highscore_name = "---";
+            highscore_score = 0;
+            saveHighscore();
+            Logger::getInstance().log("Highscore cleared by user.");
+        }
         return;
     }
 
@@ -571,6 +590,42 @@ void TetrisGame::applyGravity(int ch)
     }
 }
 
+void TetrisGame::saveHighscore()
+{
+    std::ofstream fout("highscore.txt");
+    fout << highscore_name << " " << highscore_score << "\n";
+    Logger::getInstance().log("Highscore: saved as [" + highscore_name + "] " + std::to_string(highscore_score));
+}
+
+void TetrisGame::loadHighscore()
+{
+    highscore_name = "---";
+    highscore_score = 0;
+    std::ifstream fin("highscore.txt");
+    std::string line;
+    if (std::getline(fin, line))
+    {
+        std::istringstream iss(line);
+        std::vector<std::string> tokens;
+        std::string tok;
+        while (iss >> tok)
+            tokens.push_back(tok);
+        if (tokens.size() >= 2)
+        {
+            highscore_score = std::stoi(tokens.back());
+            tokens.pop_back();
+            highscore_name = "";
+            for (size_t i = 0; i < tokens.size(); ++i)
+            {
+                if (i)
+                    highscore_name += " ";
+                highscore_name += tokens[i];
+            }
+        }
+    }
+    Logger::getInstance().log("Loaded highscore [" + highscore_name + "] " + std::to_string(highscore_score));
+}
+
 bool TetrisGame::confirmAction(const std::string &prompt)
 {
     // Choose a location for the prompt
@@ -602,6 +657,36 @@ bool TetrisGame::confirmAction(const std::string &prompt)
 
 void TetrisGame::gameOver()
 {
+    // CHECK AND UPDATE HIGHSCORE FIRST!
+    if (score > highscore_score)
+    {
+        // BLOCKING MODE and FLUSH buffered KEYS
+        nodelay(stdscr, FALSE);
+        flushinp();
+
+        char name_buf[32] = "---";
+        move(HEIGHT + 1, WIDTH * 2 + 5);
+        clrtoeol();
+        mvprintw(HEIGHT + 1, WIDTH * 2 + 5, "NEW HIGHSCORE! Enter name: ");
+        echo();
+        curs_set(1);
+        getnstr(name_buf, 31);
+        curs_set(0);
+        noecho();
+
+        if (name_buf[0] == '\0')
+            strcpy(name_buf, "---");
+        highscore_name = name_buf;
+        highscore_score = score;
+        saveHighscore();
+        Logger::getInstance().log(std::string("Name entered: [") + name_buf + "]");
+        move(HEIGHT + 1, WIDTH * 2 + 5);
+        clrtoeol();
+        refresh();
+
+        nodelay(stdscr, TRUE); // Set back to non-blocking for rest of game
+    }
+
     mvprintw(HEIGHT, WIDTH * 2 + 5, "GAME OVER! Press R=Restart, Q=Quit...");
     nodelay(stdscr, FALSE);
 

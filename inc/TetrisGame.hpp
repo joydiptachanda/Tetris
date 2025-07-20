@@ -4,6 +4,8 @@
 #include <queue>
 #include <algorithm>
 #include <random>
+#include <sstream>
+#include <fstream>
 #include "Logger.hpp"
 
 class TetrisGame
@@ -36,6 +38,10 @@ private:
     bool holdUsedThisTurn;
     bool holding;
 
+    // Highscore variable
+    std::string highscore_name;
+    int highscore_score;
+
     static const int piece_color_ids[8];
     static const char tetromino[7][4][4][4];
 
@@ -54,4 +60,8 @@ private:
     Piece getGhostPiece() const;
     // Yes or no prompt function
     bool confirmAction(const std::string &prompt);
+
+    // Highscore fie-handling
+    void loadHighscore();
+    void saveHighscore();
 };
