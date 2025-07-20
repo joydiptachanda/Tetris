@@ -270,9 +270,24 @@ void TetrisGame::drawInfo() const
     werase(sideWin);
     box(sideWin, 0, 0);
 
+    drawScorePanel();
+    drawNextPreview();
+    drawHoldPreview();
+    drawControls();
+    drawPauseState();
+
+    wnoutrefresh(sideWin);
+}
+
+void TetrisGame::drawScorePanel() const
+{
     mvwprintw(sideWin, 1, 2, "Score: %d", score);
     mvwprintw(sideWin, 2, 2, "Level: %d", level);
+    mvwprintw(sideWin, 3, 2, "Highscore: %s %d", highscore_name.c_str(), highscore_score);
+}
 
+void TetrisGame::drawNextPreview() const
+{
     mvwprintw(sideWin, 4, 2, "Next:");
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
@@ -288,7 +303,10 @@ void TetrisGame::drawInfo() const
                 mvwprintw(sideWin, 6 + y, 2 + x * 2, "  ");
             }
         }
+}
 
+void TetrisGame::drawHoldPreview() const
+{
     mvwprintw(sideWin, 4, 14, "Hold:");
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
@@ -304,7 +322,10 @@ void TetrisGame::drawInfo() const
                 mvwprintw(sideWin, 6 + y, 14 + x * 2, "  ");
             }
         }
+}
 
+void TetrisGame::drawControls() const
+{
     int instructions_row = 10;
     mvwprintw(sideWin, instructions_row++, 2, "Controls:");
     mvwprintw(sideWin, instructions_row++, 2, "=============================");
@@ -316,18 +337,17 @@ void TetrisGame::drawInfo() const
     mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
     mvwprintw(sideWin, instructions_row++, 2, "H          : Clear Highscore");
     mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
+}
 
+void TetrisGame::drawPauseState() const
+{
+    int instructions_row = 19; // Adjust if you expand controls
     if (paused)
     {
-        int info_row = instructions_row + 1;
         wattron(sideWin, A_BOLD);
-        mvwprintw(sideWin, info_row, 2, "-- PAUSED --");
+        mvwprintw(sideWin, instructions_row + 1, 2, "-- PAUSED --");
         wattroff(sideWin, A_BOLD);
     }
-
-    mvwprintw(sideWin, 3, 2, "Highscore: %s %d", highscore_name.c_str(), highscore_score);
-
-    wnoutrefresh(sideWin);
 }
 
 void TetrisGame::spawnPiece()

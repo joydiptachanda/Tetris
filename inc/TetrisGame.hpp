@@ -62,6 +62,12 @@ private:
         const std::array<std::array<bool, WIDTH>, HEIGHT> &isCurrCell) const;
 
     void drawInfo() const;
+    void drawScorePanel() const;
+    void drawNextPreview() const;
+    void drawHoldPreview() const;
+    void drawControls() const;
+    void drawPauseState() const;
+
     void spawnPiece();
 
     void handleInput(int ch);
