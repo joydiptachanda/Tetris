@@ -187,45 +187,42 @@ void TetrisGame::drawBoard() const
     werase(gameWin);
     box(gameWin, 0, 0);
 
-    // Draw the board, ghost, and current piece
-    Piece ghost = getGhostPiece();
-    bool ghostValid = (ghost.shape >= 0 && ghost.shape < 7 && ghost.rot >= 0 && ghost.rot < 4);
+    // Precompute masks for ghost and current piece cells
+    bool isGhostCell[HEIGHT][WIDTH] = {};
+    bool isCurrCell[HEIGHT][WIDTH] = {};
 
+    // Precompute ghost piece once
+    const Piece ghost = getGhostPiece();
+    for (int dy = 0; dy < 4; ++dy)
+        for (int dx = 0; dx < 4; ++dx)
+            if (ghost.shape >= 0 && ghost.shape < 7 && ghost.rot >= 0 && ghost.rot < 4 &&
+                tetromino[ghost.shape][ghost.rot][dy][dx])
+            {
+                int ny = ghost.y + dy, nx = ghost.x + dx;
+                if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
+                    isGhostCell[ny][nx] = true;
+            }
+
+    // Precompute current piece
+    for (int dy = 0; dy < 4; ++dy)
+        for (int dx = 0; dx < 4; ++dx)
+            if (curr.shape >= 0 && curr.shape < 7 && curr.rot >= 0 && curr.rot < 4 &&
+                tetromino[curr.shape][curr.rot][dy][dx])
+            {
+                int ny = curr.y + dy, nx = curr.x + dx;
+                if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
+                    isCurrCell[ny][nx] = true;
+            }
+
+    // Draw the board
     for (int i = 2; i < HEIGHT; ++i)
     {
         for (int j = 0; j < WIDTH; ++j)
         {
             int cell = field[i][j];
-            bool isGhost = false, isCurrent = false;
+            bool isCurrent = isCurrCell[i][j];
+            bool isGhost = isGhostCell[i][j];
 
-            // Is this cell occupied by the ghost piece?
-            if (ghostValid)
-            {
-                for (int dy = 0; dy < 4; ++dy)
-                    for (int dx = 0; dx < 4; ++dx)
-                    {
-                        int pi = ghost.y + dy, pj = ghost.x + dx;
-                        if (ghostValid && tetromino[ghost.shape][ghost.rot][dy][dx] &&
-                            pi == i && pj == j && pi >= 2)
-                        {
-                            isGhost = true;
-                        }
-                    }
-            }
-            // Is this cell occupied by the current piece?
-            if (ghostValid)
-            {
-                for (int dy = 0; dy < 4; ++dy)
-                    for (int dx = 0; dx < 4; ++dx)
-                    {
-                        int pi = curr.y + dy, pj = curr.x + dx;
-                        if (tetromino[curr.shape][curr.rot][dy][dx] && pi == i && pj == j && pi >= 2)
-                        {
-                            isCurrent = true;
-                        }
-                    }
-            }
-            // Draw logic
             if (isCurrent)
             {
                 wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE);
