@@ -527,11 +527,53 @@ void TetrisGame::applyGravity(int ch)
 
 void TetrisGame::gameOver()
 {
-    mvprintw(HEIGHT, WIDTH * 2 + 5, "GAME OVER! Press Q...");
+    mvprintw(HEIGHT, WIDTH * 2 + 5, "GAME OVER! Press R=Restart, Q=Quit...");
     nodelay(stdscr, FALSE);
-    while (getch() != 'q')
-        ;
-    running = false;
+
+    int k;
+    while (true)
+    {
+        k = getch();
+        if (k == 'r' || k == 'R')
+        {
+            // Reset all fields
+            for (int i = 0; i < HEIGHT; ++i)
+                for (int j = 0; j < WIDTH; ++j)
+                    field[i][j] = 0;
+            score = 0;
+            level = 1;
+            delay = 500;
+            frame = 0;
+            holding = false;
+            holdUsedThisTurn = false;
+            paused = false;
+            pieceQueue = std::queue<int>();
+            refillBag();
+            if (pieceQueue.empty())
+                refillBag();
+            int pieceType = pieceQueue.front();
+            pieceQueue.pop();
+            next = {pieceType, 0, WIDTH / 2 - 2, 0};
+            spawnPiece();
+            running = true;
+            nodelay(stdscr, TRUE);
+            // Clear the game over message line after restart or quit
+            move(HEIGHT, WIDTH * 2 + 5);
+            clrtoeol(); // Clear to end of line, requires #include <ncurses.h>
+            refresh();
+            Logger::getInstance().log("Game restarted.");
+            return;
+        }
+        else if (k == 'q' || k == 'Q')
+        {
+            // Clear the game over message line after restart or quit
+            move(HEIGHT, WIDTH * 2 + 5);
+            clrtoeol(); // Clear to end of line, requires #include <ncurses.h>
+            refresh();
+            running = false;
+            break;
+        }
+    }
 }
 
 void TetrisGame::run()
