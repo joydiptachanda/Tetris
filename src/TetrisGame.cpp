@@ -65,7 +65,8 @@ void TetrisGame::refillBag()
 
 TetrisGame::TetrisGame()
     : score(0), level(1), delay(500), frame(0), running(true),
-      gameWin(nullptr), sideWin(nullptr)
+      gameWin(nullptr), sideWin(nullptr),
+      hardDropped(false)
 {
     for (int i = 0; i < HEIGHT; ++i)
         for (int j = 0; j < WIDTH; ++j)
@@ -511,6 +512,7 @@ void TetrisGame::handleInput(int ch)
         score += dropDistance * 2;
         Logger::getInstance().log("Hard drop to y=" + std::to_string(curr.y) +
                                   ", bonus: " + std::to_string(dropDistance * 2));
+        hardDropped = true;
         break;
     }
     case 'q':
@@ -529,6 +531,51 @@ void TetrisGame::handleInput(int ch)
 
 void TetrisGame::applyGravity(int ch)
 {
+    // Instant lock if hard drop was performed
+    if (hardDropped)
+    {
+        Logger::getInstance().log("Piece instantly merged from hard drop.");
+        merge(curr);
+        int lines = clearLines();
+        if (lines > 0)
+        {
+            int points = 0;
+            switch (lines)
+            {
+            case 1:
+                points = 100 * level;
+                break;
+            case 2:
+                points = 300 * level;
+                break;
+            case 3:
+                points = 500 * level;
+                break;
+            case 4:
+                points = 800 * level;
+                break;
+            default:
+                points = lines * 100 * level;
+                break;
+            }
+            score += points;
+            Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
+            Logger::getInstance().log("Score: " + std::to_string(score));
+            level = score / 500 + 1;
+            delay = std::max(100, 500 - (level - 1) * 40);
+            Logger::getInstance().log("Level: " + std::to_string(level) + ", Delay: " + std::to_string(delay));
+        }
+        spawnPiece();
+        if (!check(curr))
+        {
+            Logger::getInstance().log("Game Over: spawn not possible.");
+            gameOver();
+        }
+        hardDropped = false;
+        return;
+    }
+
+    // Normal gravity handling
     if (++frame > delay / 30 || ch == KEY_DOWN)
     {
         frame = 0;

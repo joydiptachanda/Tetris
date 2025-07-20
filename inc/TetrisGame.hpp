@@ -42,6 +42,8 @@ private:
     std::string highscore_name;
     int highscore_score;
 
+    bool hardDropped;
+
     static const int piece_color_ids[8];
     static const char tetromino[7][4][4][4];
 
