@@ -73,9 +73,7 @@ TetrisGame::TetrisGame()
 
     setlocale(LC_ALL, "");
     srand((unsigned)time(0));
-    for (int i = 0; i < HEIGHT; ++i)
-        for (int j = 0; j < WIDTH; ++j)
-            field[i][j] = 0;
+
     initscr();
     if (has_colors())
         initColors256();
