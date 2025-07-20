@@ -359,6 +359,52 @@ void TetrisGame::handleInput(int ch)
         return;
     }
 
+    if ((ch == 'q' || ch == 'Q') && !paused)
+    {
+        if (confirmAction("Quit game?"))
+        {
+            Logger::getInstance().log("Quit key pressed (confirmed).");
+            running = false;
+        }
+        else
+        {
+            Logger::getInstance().log("Quit cancelled by user.");
+        }
+        return;
+    }
+    if ((ch == 'r' || ch == 'R') && !paused)
+    {
+        if (confirmAction("Restart game?"))
+        {
+            Logger::getInstance().log("Restart key pressed (confirmed).");
+            // Game state reset (as in your restart handler)
+            for (int i = 0; i < HEIGHT; ++i)
+                for (int j = 0; j < WIDTH; ++j)
+                    field[i][j] = 0;
+            score = 0;
+            level = 1;
+            delay = 500;
+            frame = 0;
+            holding = false;
+            holdUsedThisTurn = false;
+            paused = false;
+            pieceQueue = std::queue<int>();
+            refillBag();
+            if (pieceQueue.empty())
+                refillBag();
+            int pieceType = pieceQueue.front();
+            pieceQueue.pop();
+            next = {pieceType, 0, WIDTH / 2 - 2, 0};
+            spawnPiece();
+            Logger::getInstance().log("Game restarted by user.");
+        }
+        else
+        {
+            Logger::getInstance().log("Restart cancelled by user.");
+        }
+        return;
+    }
+
     // If paused, ignore ALL other inputs
     if (paused)
         return;
@@ -523,6 +569,35 @@ void TetrisGame::applyGravity(int ch)
             }
         }
     }
+}
+
+bool TetrisGame::confirmAction(const std::string &prompt)
+{
+    // Choose a location for the prompt
+    int y = HEIGHT / 2, x = (WIDTH * 2) / 2;
+    mvprintw(y, x, "%s (Y/N):   ", prompt.c_str());
+    refresh();
+    int response;
+    bool result = false;
+    while (true)
+    {
+        response = getch();
+        if (response == 'y' || response == 'Y')
+        {
+            result = true;
+            break;
+        }
+        if (response == 'n' || response == 'N' || response == 27 /* ESC */)
+        {
+            result = false;
+            break;
+        }
+    }
+    // Clean up the prompt line
+    move(y, x);
+    clrtoeol();
+    refresh();
+    return result;
 }
 
 void TetrisGame::gameOver()

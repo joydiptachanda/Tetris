@@ -52,4 +52,6 @@ private:
     void refillBag(); // For improved randomization
     // Function to Find Ghost Position
     Piece getGhostPiece() const;
+    // Yes or no prompt function
+    bool confirmAction(const std::string &prompt);
 };
