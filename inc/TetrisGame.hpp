@@ -4,6 +4,7 @@
 #include <queue>
 #include <algorithm>
 #include <random>
+#include <array>
 #include <sstream>
 #include <fstream>
 #include "Logger.hpp"
@@ -16,16 +17,17 @@ public:
     void run();
 
 private:
-    static const int WIDTH = 10;
-    static const int HEIGHT = 22;
-    static const int VISIBLE_HEIGHT = 20;
+    static constexpr int WIDTH = 10;
+    static constexpr int HEIGHT = 22;
+    static constexpr int VISIBLE_HEIGHT = 20;
 
     struct Piece
     {
         int shape, rot, x, y;
     };
 
-    int field[HEIGHT][WIDTH];
+    std::array<std::array<int, WIDTH>, HEIGHT> field{};
+
     int score, level, delay, frame;
     bool running;
     // pause feature
@@ -41,11 +43,11 @@ private:
     // Highscore variable
     std::string highscore_name;
     int highscore_score;
-
     bool hardDropped;
 
-    static const int piece_color_ids[8];
-    static const char tetromino[7][4][4][4];
+    // Use std::array for color and tetromino data
+    static const std::array<int, 8> piece_color_ids;
+    static const std::array<std::array<std::array<std::array<char, 4>, 4>, 4>, 7> tetromino;
 
     void initColors256();
     bool check(const Piece &p) const;
@@ -57,8 +59,7 @@ private:
     void handleInput(int ch);
     void applyGravity(int ch);
     void gameOver();
-    void refillBag(); // For improved randomization
-    // Function to Find Ghost Position
+    void refillBag();
     Piece getGhostPiece() const;
     // Yes or no prompt function
     bool confirmAction(const std::string &prompt);
