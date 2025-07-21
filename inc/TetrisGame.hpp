@@ -1,5 +1,5 @@
 #pragma once
-#include <ncurses.h>
+#include <ncursesw/ncurses.h>
 #include <vector>
 #include <queue>
 #include <algorithm>
@@ -88,10 +88,13 @@ private:
     void awardScoreAndLevel(int lines);
 
     void gameOver();
+    void drawGameOverScreen();
+
     void refillBag();
     Piece getGhostPiece() const;
     // Yes or no prompt function
     bool confirmAction(const std::string &prompt);
+    void drawConfirmActionScreen(const std::string &prompt);
 
     // Highscore fie-handling
     void loadHighscore();

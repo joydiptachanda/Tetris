@@ -2,3 +2,5 @@ build/
 compile.sh
 features.txt
 .vscode
+tetris.log
+highscore.txt

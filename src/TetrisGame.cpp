@@ -242,15 +242,15 @@ void TetrisGame::drawCells(
 
             if (isCurrent)
             {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE);
+                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
                 mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE);
+                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
             }
             else if (isGhost && !cell)
             {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "::");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM);
+                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
+                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "░░");
+                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
             }
             else if (cell)
             {
@@ -270,6 +270,7 @@ void TetrisGame::drawInfo() const
 {
     werase(sideWin);
     box(sideWin, 0, 0);
+    wborder(sideWin, '|', '|', '=', '=', '+', '+', '+', '+');
 
     drawScorePanel();
     drawNextPreview();
@@ -289,55 +290,61 @@ void TetrisGame::drawScorePanel() const
 
 void TetrisGame::drawNextPreview() const
 {
-    mvwprintw(sideWin, 4, 2, "Next:");
+    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
+    mvwprintw(sideWin, 4, 2, "╔════ NEXT ════╗");
+    wattroff(sideWin, A_BOLD | COLOR_PAIR(next.shape + 1));
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
         {
             if (next.shape >= 0 && next.shape < 7 && tetromino[next.shape][0][y][x])
             {
                 wattron(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 6 + y, 2 + x * 2, "  ");
+                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
                 wattroff(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
             }
             else
             {
-                mvwprintw(sideWin, 6 + y, 2 + x * 2, "  ");
+                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
             }
         }
+    mvwprintw(sideWin, 9, 2, "╚══════════════╝");
 }
 
 void TetrisGame::drawHoldPreview() const
 {
-    mvwprintw(sideWin, 4, 14, "Hold:");
+    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
+    mvwprintw(sideWin, 4, 19, "╔═══ HOLD ═══╗");
+    wattroff(sideWin, A_BOLD | COLOR_PAIR(6));
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
         {
             if (holding && hold.shape >= 0 && hold.shape < 7 && tetromino[hold.shape][0][y][x])
             {
                 wattron(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 6 + y, 14 + x * 2, "  ");
+                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
                 wattroff(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
             }
             else
             {
-                mvwprintw(sideWin, 6 + y, 14 + x * 2, "  ");
+                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
             }
         }
+    mvwprintw(sideWin, 9, 19, "╚════════════╝");
 }
 
 void TetrisGame::drawControls() const
 {
     int instructions_row = 10;
-    mvwprintw(sideWin, instructions_row++, 2, "Controls:");
-    mvwprintw(sideWin, instructions_row++, 2, "=============================");
-    mvwprintw(sideWin, instructions_row++, 2, "Left/Right : Move");
-    mvwprintw(sideWin, instructions_row++, 2, "Down       : Soft drop");
+    mvwprintw(sideWin, instructions_row++, 2, "╔══════════ CONTROLS ═════════╗");
+    mvwprintw(sideWin, instructions_row++, 2, "← / →      : Move");
+    mvwprintw(sideWin, instructions_row++, 2, "↓          : Soft drop");
     mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
-    mvwprintw(sideWin, instructions_row++, 2, "Space      : Hard drop");
+    mvwprintw(sideWin, instructions_row++, 2, "⎵/Space    : Hard drop");
     mvwprintw(sideWin, instructions_row++, 2, "C          : Hold Piece");
     mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
     mvwprintw(sideWin, instructions_row++, 2, "H          : Clear Highscore");
     mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
+    mvwprintw(sideWin, instructions_row++, 2, "╚═════════════════════════════╝");
 }
 
 void TetrisGame::drawPauseState() const
@@ -346,7 +353,7 @@ void TetrisGame::drawPauseState() const
     if (paused)
     {
         wattron(sideWin, A_BOLD);
-        mvwprintw(sideWin, instructions_row + 1, 2, "-- PAUSED --");
+        mvwprintw(sideWin, instructions_row + 1, 2, "||══════════ PAUSED ═════════||");
         wattroff(sideWin, A_BOLD);
     }
 }
@@ -461,7 +468,7 @@ bool TetrisGame::handleClearHighscoreKey(int ch)
 {
     if ((ch == 'h' || ch == 'H'))
     {
-        if (confirmAction("Clear highscore?"))
+        if (confirmAction("CLEAR HIGHSCORE?"))
         {
             highscore_name = "---";
             highscore_score = 0;
@@ -478,7 +485,7 @@ bool TetrisGame::handleQuitKey(int ch)
 {
     if ((ch == 'q' || ch == 'Q') && !paused)
     {
-        if (confirmAction("Quit game?"))
+        if (confirmAction("QUIT GAME?"))
         {
             Logger::getInstance().log("Quit key pressed (confirmed).");
             running = false;
@@ -496,7 +503,7 @@ bool TetrisGame::handleRestartKey(int ch)
 {
     if ((ch == 'r' || ch == 'R') && !paused)
     {
-        if (confirmAction("Restart game?"))
+        if (confirmAction("RESTART GAME?"))
         {
             Logger::getInstance().log("Restart key pressed (confirmed).");
             field = {};
@@ -752,11 +759,29 @@ void TetrisGame::loadHighscore()
     Logger::getInstance().log("Loaded highscore [" + highscore_name + "] " + std::to_string(highscore_score));
 }
 
+void TetrisGame::drawConfirmActionScreen(const std::string &prompt)
+{
+    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
+    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
+    mvprintw(y - 1, x - 6, "+--------------------+");
+    std::string msg = prompt.substr(0, 18);
+    int pad = (18 - msg.length()) / 2;
+    std::string line = "| ";
+    line += std::string(pad, ' ');
+    line += msg;
+    line += std::string(18 - pad - msg.length(), ' ');
+    line += " |";
+    mvprintw(y, x - 6, "%s", line.c_str());
+    mvprintw(y + 1, x - 6, "|    Y=YES   N=NO    |");
+    mvprintw(y + 2, x - 6, "+--------------------+");
+    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
+    refresh();
+}
+
 bool TetrisGame::confirmAction(const std::string &prompt)
 {
-    // Choose a location for the prompt
-    int y = HEIGHT / 2, x = (WIDTH * 2) / 2;
-    mvprintw(y, x, "%s (Y/N):   ", prompt.c_str());
+    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
+    drawConfirmActionScreen(prompt);
     refresh();
     int response;
     bool result = false;
@@ -768,17 +793,37 @@ bool TetrisGame::confirmAction(const std::string &prompt)
             result = true;
             break;
         }
-        if (response == 'n' || response == 'N' || response == 27 /* ESC */)
+        if (response == 'n' || response == 'N' || response == 27)
         {
             result = false;
             break;
         }
     }
-    // Clean up the prompt line
-    move(y, x);
-    clrtoeol();
+
+    for (int dy = -1; dy <= 2; ++dy)
+    {
+        move(y + dy, x - 6);
+        clrtoeol();
+    }
     refresh();
+
+    drawBoard();
+    drawInfo();
+    doupdate();
+
     return result;
+}
+
+void TetrisGame::drawGameOverScreen()
+{
+    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
+    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
+    mvprintw(y - 1, x - 6, "+--------------------+");
+    mvprintw(y, x - 6, "|    GAME  OVER!     |");
+    mvprintw(y + 1, x - 6, "| R=Restart  Q=Quit  |");
+    mvprintw(y + 2, x - 6, "+--------------------+");
+    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
+    refresh();
 }
 
 void TetrisGame::gameOver()
@@ -816,7 +861,7 @@ void TetrisGame::gameOver()
     infoDirty = true;
     boardDirty = true;
 
-    mvprintw(HEIGHT, WIDTH * 2 + 5, "GAME OVER! Press R=Restart, Q=Quit...");
+    drawGameOverScreen();
     nodelay(stdscr, FALSE);
 
     int k;
