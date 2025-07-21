@@ -89,6 +89,7 @@ private:
 
     void gameOver();
     void drawGameOverScreen();
+    void drawHighscorePrompt() const;
 
     void refillBag();
     Piece getGhostPiece() const;

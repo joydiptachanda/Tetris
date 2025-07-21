@@ -826,6 +826,19 @@ void TetrisGame::drawGameOverScreen()
     refresh();
 }
 
+void TetrisGame::drawHighscorePrompt() const
+{
+    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 8;
+    wattron(stdscr, A_BOLD | COLOR_PAIR(0)); // Use bright yellow
+    mvprintw(y - 1, x - 6, "+---------------------------------------+");
+    mvprintw(y, x - 6, "| NEW HIGHSCORE! Enter name:            |");
+    mvprintw(y + 1, x - 6, "+---------------------------------------+");
+    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
+    refresh();
+    // Optionally, place cursor ready for name entry:
+    move(y, x - 6 + 28); // 28 is after "NEW HIGHSCORE! Enter name: "
+}
+
 void TetrisGame::gameOver()
 {
     // CHECK AND UPDATE HIGHSCORE FIRST!
@@ -838,7 +851,8 @@ void TetrisGame::gameOver()
         char name_buf[32] = "---";
         move(HEIGHT + 1, WIDTH * 2 + 5);
         clrtoeol();
-        mvprintw(HEIGHT + 1, WIDTH * 2 + 5, "NEW HIGHSCORE! Enter name: ");
+        // mvprintw(HEIGHT + 1, WIDTH * 2 + 5, "NEW HIGHSCORE! Enter name: ");
+        drawHighscorePrompt();
         echo();
         curs_set(1);
         getnstr(name_buf, 31);
