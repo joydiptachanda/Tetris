@@ -637,35 +637,7 @@ void TetrisGame::applyGravity(int ch)
         merge(curr);
         boardDirty = true;
         int lines = clearLines();
-        if (lines > 0)
-        {
-            int points = 0;
-            switch (lines)
-            {
-            case 1:
-                points = 100 * level;
-                break;
-            case 2:
-                points = 300 * level;
-                break;
-            case 3:
-                points = 500 * level;
-                break;
-            case 4:
-                points = 800 * level;
-                break;
-            default:
-                points = lines * 100 * level;
-                break;
-            }
-            score += points;
-            Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
-            Logger::getInstance().log("Score: " + std::to_string(score));
-            level = score / 500 + 1;
-            delay = std::max(100, 500 - (level - 1) * 40);
-            Logger::getInstance().log("Level: " + std::to_string(level) + ", Delay: " + std::to_string(delay));
-            infoDirty = true;
-        }
+        awardScoreAndLevel(lines);
         spawnPiece();
         infoDirty = true; // Next/hold panel may change
         if (!check(curr))
@@ -698,35 +670,7 @@ void TetrisGame::applyGravity(int ch)
             merge(curr);
             boardDirty = true;
             int lines = clearLines();
-            if (lines > 0)
-            {
-                int points = 0;
-                switch (lines)
-                {
-                case 1:
-                    points = 100 * level;
-                    break;
-                case 2:
-                    points = 300 * level;
-                    break;
-                case 3:
-                    points = 500 * level;
-                    break;
-                case 4:
-                    points = 800 * level;
-                    break;
-                default:
-                    points = lines * 100 * level;
-                    break;
-                }
-                score += points;
-                Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
-                Logger::getInstance().log("Score: " + std::to_string(score));
-                level = score / 500 + 1;
-                delay = std::max(100, 500 - (level - 1) * 40);
-                Logger::getInstance().log("Level: " + std::to_string(level) + ", Delay: " + std::to_string(delay));
-                infoDirty = true;
-            }
+            awardScoreAndLevel(lines);
             spawnPiece();
             infoDirty = true;
             if (!check(curr))
@@ -737,6 +681,39 @@ void TetrisGame::applyGravity(int ch)
             }
         }
     }
+}
+
+void TetrisGame::awardScoreAndLevel(int lines)
+{
+    if (lines <= 0)
+        return;
+
+    int points = 0;
+    switch (lines)
+    {
+    case 1:
+        points = 100 * level;
+        break;
+    case 2:
+        points = 300 * level;
+        break;
+    case 3:
+        points = 500 * level;
+        break;
+    case 4:
+        points = 800 * level;
+        break;
+    default:
+        points = lines * 100 * level;
+        break;
+    }
+    score += points;
+    Logger::getInstance().log("Cleared lines: " + std::to_string(lines));
+    Logger::getInstance().log("Score: " + std::to_string(score));
+    level = score / 500 + 1;
+    delay = std::max(100, 500 - (level - 1) * 40);
+    Logger::getInstance().log("Level: " + std::to_string(level) + ", Delay: " + std::to_string(delay));
+    infoDirty = true;
 }
 
 void TetrisGame::saveHighscore()

@@ -85,6 +85,8 @@ private:
     bool handleDropKey(int ch, Piece &temp);
 
     void applyGravity(int ch);
+    void awardScoreAndLevel(int lines);
+
     void gameOver();
     void refillBag();
     Piece getGhostPiece() const;
