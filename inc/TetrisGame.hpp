@@ -84,7 +84,7 @@ private:
     bool handleRotateKey(int ch, Piece &temp);
     bool handleDropKey(int ch, Piece &temp);
 
-    void applyGravity(int ch);
+    void applyGravity();
     void awardScoreAndLevel(int lines);
 
     void gameOver();

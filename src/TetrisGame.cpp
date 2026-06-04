@@ -119,11 +119,36 @@ TetrisGame::~TetrisGame()
 void TetrisGame::initColors256()
 {
     start_color();
+    short bg = COLOR_BLACK;
 #if NCURSES_VERSION_MAJOR >= 6
-    use_default_colors();
+    if (use_default_colors() == OK)
+        bg = -1;
 #endif
+
+    const std::array<short, 8> basic_color_ids = {{
+        0,
+        COLOR_CYAN,
+        COLOR_YELLOW,
+        COLOR_MAGENTA,
+        COLOR_GREEN,
+        COLOR_RED,
+        COLOR_BLUE,
+        COLOR_WHITE}};
+
+    const bool supports256 = (COLORS >= 256);
+    const int safeColorCount = std::max(1, COLORS);
     for (int i = 1; i <= 7; ++i)
-        init_pair(i, piece_color_ids[i], -1);
+    {
+        short fg = supports256 ? static_cast<short>(piece_color_ids[i]) : basic_color_ids[i];
+        if (fg >= COLORS)
+            fg = static_cast<short>(i % safeColorCount);
+
+        if (init_pair(i, fg, bg) == ERR && bg == -1)
+            init_pair(i, fg, COLOR_BLACK);
+    }
+
+    Logger::getInstance().log("Terminal COLORS=" + std::to_string(COLORS) +
+                              ", using " + (supports256 ? std::string("256-color") : std::string("basic-color")) + " palette");
 }
 
 bool TetrisGame::check(const Piece &p) const
@@ -375,10 +400,6 @@ void TetrisGame::spawnPiece()
 
 void TetrisGame::handleInput(int ch)
 {
-    bool didMove = false;
-    bool didRotate = false;
-    bool didDrop = false;
-
     if (handlePauseKey(ch))
     {
         infoDirty = true;
@@ -536,6 +557,8 @@ bool TetrisGame::handleRestartKey(int ch)
 
 bool TetrisGame::handleMoveKey(int ch, Piece &temp)
 {
+    bool softDropAttempt = false;
+
     switch (ch)
     {
     case KEY_LEFT:
@@ -547,9 +570,8 @@ bool TetrisGame::handleMoveKey(int ch, Piece &temp)
         Logger::getInstance().log("Right key pressed. x=" + std::to_string(temp.x));
         break;
     case KEY_DOWN:
+        softDropAttempt = true;
         ++temp.y;
-        score += 1;
-        infoDirty = true;
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
         break;
     default:
@@ -557,6 +579,11 @@ bool TetrisGame::handleMoveKey(int ch, Piece &temp)
     }
     if (check(temp))
     {
+        if (softDropAttempt)
+        {
+            score += 1;
+            infoDirty = true;
+        }
         Logger::getInstance().log("Piece moved to (x=" + std::to_string(temp.x) +
                                   ", y=" + std::to_string(temp.y) +
                                   ", rot=" + std::to_string(temp.rot) + ")");
@@ -635,7 +662,7 @@ bool TetrisGame::handleDropKey(int ch, Piece &temp)
     return true;
 }
 
-void TetrisGame::applyGravity(int ch)
+void TetrisGame::applyGravity()
 {
     // Instant lock if hard drop was performed
     if (hardDropped)
@@ -659,7 +686,7 @@ void TetrisGame::applyGravity(int ch)
     }
 
     // Normal gravity handling
-    if (++frame > delay / 30 || ch == KEY_DOWN)
+    if (++frame > delay / 30)
     {
         frame = 0;
         Piece fall = curr;
@@ -935,7 +962,7 @@ void TetrisGame::run()
 
         handleInput(ch);
         if (!paused)
-            applyGravity(ch);
+            applyGravity();
 
         if (boardDirty)
             drawBoard();
