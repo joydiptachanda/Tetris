@@ -62,6 +62,9 @@ void TetrisGame::restartGame()
     holding = false;
     holdUsedThisTurn = false;
     paused = false;
+    clearingLines = false;
+    clearingRows.clear();
+    clearAnimFrame = 0;
     pieceQueue = std::queue<int>();
     refillBag();
     if (pieceQueue.empty())
@@ -335,8 +338,13 @@ void TetrisGame::applyGravity()
         Logger::getInstance().log("Piece instantly merged from hard drop.");
         board.merge(curr);
         boardDirty = true;
-        int lines = board.clearLines();
-        awardScoreAndLevel(lines);
+        hardDropped = false;
+        auto fullLines = board.findFullLines();
+        if (!fullLines.empty())
+        {
+            startLineClearAnimation(fullLines);
+            return;
+        }
         spawnPiece();
         infoDirty = true; // Next/hold panel may change
         if (!board.check(curr))
@@ -346,7 +354,6 @@ void TetrisGame::applyGravity()
             boardDirty = true;
             gameOver();
         }
-        hardDropped = false;
         return;
     }
 
@@ -368,8 +375,12 @@ void TetrisGame::applyGravity()
                                       std::to_string(curr.x) + ", y=" + std::to_string(curr.y) + ")");
             board.merge(curr);
             boardDirty = true;
-            int lines = board.clearLines();
-            awardScoreAndLevel(lines);
+            auto fullLines = board.findFullLines();
+            if (!fullLines.empty())
+            {
+                startLineClearAnimation(fullLines);
+                return;
+            }
             spawnPiece();
             infoDirty = true;
             if (!board.check(curr))
@@ -381,6 +392,40 @@ void TetrisGame::applyGravity()
         }
     }
 }
+
+void TetrisGame::startLineClearAnimation(const std::vector<int> &rows)
+{
+    clearingLines = true;
+    clearingRows = rows;
+    clearAnimFrame = 0;
+    boardDirty = true;
+    Logger::getInstance().log("Line clear animation started for " + std::to_string(rows.size()) + " line(s).");
+}
+
+void TetrisGame::updateLineClearAnimation()
+{
+    ++clearAnimFrame;
+    boardDirty = true;
+
+    if (clearAnimFrame < BLINK_PERIOD_FRAMES * BLINK_TOGGLES)
+        return;
+
+    int lines = board.clearLines();
+    awardScoreAndLevel(lines);
+    clearingLines = false;
+    clearingRows.clear();
+
+    spawnPiece();
+    infoDirty = true;
+    if (!board.check(curr))
+    {
+        Logger::getInstance().log("Game Over: spawn not possible.");
+        infoDirty = true;
+        boardDirty = true;
+        gameOver();
+    }
+}
+
 
 void TetrisGame::awardScoreAndLevel(int lines)
 {
@@ -501,12 +546,29 @@ void TetrisGame::run()
         usleep(30 * 1000);
         int ch = renderer.pollKey();
 
-        handleInput(ch);
-        if (!paused)
-            applyGravity();
+        if (clearingLines)
+        {
+            updateLineClearAnimation();
+        }
+        else
+        {
+            handleInput(ch);
+            if (!paused)
+                applyGravity();
+        }
 
         if (boardDirty)
-            renderer.drawBoard(board, curr);
+        {
+            std::array<bool, BOARD_HEIGHT> hiddenRows{};
+            if (clearingLines)
+            {
+                bool blinkOn = (clearAnimFrame / BLINK_PERIOD_FRAMES) % 2 == 0;
+                if (!blinkOn)
+                    for (int row : clearingRows)
+                        hiddenRows[row] = true;
+            }
+            renderer.drawBoard(board, clearingLines ? Piece{-1, 0, 0, 0} : curr, hiddenRows);
+        }
         if (infoDirty)
             renderer.drawInfo(score, level, highscore.name(), highscore.score(), next, holding, hold, paused);
         renderer.present();

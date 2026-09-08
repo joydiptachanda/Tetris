@@ -73,25 +73,26 @@ void Renderer::drawSideBorder()
     }
 }
 
-void Renderer::drawBoard(const Board &board, const Piece &curr)
+void Renderer::drawBoard(const Board &board, const Piece &curr, const std::array<bool, BOARD_HEIGHT> &hiddenRows)
 {
     drawGameBorder();
     auto ghostMask = board.computeGhostMask(curr);
     auto currMask = board.computeCurrentMask(curr);
-    drawCells(board, curr, ghostMask, currMask);
+    drawCells(board, curr, ghostMask, currMask, hiddenRows);
 }
 
 void Renderer::drawCells(const Board &board, const Piece &curr,
                          const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isGhostCell,
-                         const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isCurrCell)
+                         const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isCurrCell,
+                         const std::array<bool, BOARD_HEIGHT> &hiddenRows)
 {
     for (int i = 2; i < BOARD_HEIGHT; ++i)
     {
         for (int j = 0; j < BOARD_WIDTH; ++j)
         {
-            int cell = board.cellAt(i, j);
-            bool isCurrent = isCurrCell[i][j];
-            bool isGhost = isGhostCell[i][j];
+            int cell = hiddenRows[i] ? 0 : board.cellAt(i, j);
+            bool isCurrent = !hiddenRows[i] && isCurrCell[i][j];
+            bool isGhost = !hiddenRows[i] && isGhostCell[i][j];
             int row = gameRow(i - 2 + 1);
             int col = gameCol(j * 2 + 1);
 

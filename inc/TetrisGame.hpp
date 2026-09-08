@@ -2,6 +2,7 @@
 #include <queue>
 #include <random>
 #include <string>
+#include <vector>
 #include "Tetromino.hpp"
 #include "Board.hpp"
 #include "Renderer.hpp"
@@ -38,6 +39,14 @@ private:
 
     bool hardDropped;
 
+    // Line-clear blink animation: briefly toggles the cleared row(s) on/off
+    // before actually removing them, matching the classic Tetris blink effect.
+    static constexpr int BLINK_PERIOD_FRAMES = 3; // frames per on/off phase
+    static constexpr int BLINK_TOGGLES = 4;        // on,off,on,off
+    bool clearingLines = false;
+    std::vector<int> clearingRows;
+    int clearAnimFrame = 0;
+
     bool boardDirty = true;
     bool infoDirty = true;
 
@@ -58,6 +67,8 @@ private:
 
     void applyGravity();
     void awardScoreAndLevel(int lines);
+    void startLineClearAnimation(const std::vector<int> &rows);
+    void updateLineClearAnimation();
 
     void gameOver();
     void refillBag();

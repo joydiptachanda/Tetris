@@ -11,7 +11,9 @@ class Renderer
 public:
     Renderer();
 
-    void drawBoard(const Board &board, const Piece &curr);
+    // hiddenRows[i]==true blanks out row i's filled cells (used for the line-clear blink).
+    void drawBoard(const Board &board, const Piece &curr,
+                   const std::array<bool, BOARD_HEIGHT> &hiddenRows = {});
     void drawInfo(int score, int level, const std::string &highscoreName, int highscoreScore,
                   const Piece &next, bool holding, const Piece &hold, bool paused);
     void present(); // flushes everything drawn since the last present()
@@ -56,7 +58,8 @@ private:
     void drawSideBorder();
     void drawCells(const Board &board, const Piece &curr,
                    const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isGhostCell,
-                   const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isCurrCell);
+                   const std::array<std::array<bool, BOARD_WIDTH>, BOARD_HEIGHT> &isCurrCell,
+                   const std::array<bool, BOARD_HEIGHT> &hiddenRows);
     void drawScorePanel(int score, int level, const std::string &highscoreName, int highscoreScore);
     void drawNextPreview(const Piece &next);
     void drawHoldPreview(bool holding, const Piece &hold);

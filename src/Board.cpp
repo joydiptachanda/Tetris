@@ -54,6 +54,16 @@ int Board::clearLines()
     return lines;
 }
 
+std::vector<int> Board::findFullLines() const
+{
+    std::vector<int> rows;
+    for (int i = 0; i < BOARD_HEIGHT; ++i)
+        if (std::all_of(field[i].begin(), field[i].end(), [](int x)
+                        { return x != 0; }))
+            rows.push_back(i);
+    return rows;
+}
+
 Piece Board::getGhostPiece(const Piece &curr) const
 {
     Piece ghost = curr;
