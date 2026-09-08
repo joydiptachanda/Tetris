@@ -1,14 +1,14 @@
 #include <csignal>
-#include <ncurses.h>
 #include <iostream>
 #include <string>
 #include "TetrisGame.hpp"
 #include "Logger.hpp"
+#include "Terminal.hpp"
 
 // Graceful shutdown on Ctrl+C or kill
 void handle_signal(int sig)
 {
-    endwin();
+    Terminal::emergencyRestore();
     Logger::getInstance().log("Tetris closed by signal " + std::to_string(sig));
     std::cerr << "\nTetris closed by signal " << sig << ".\n";
     std::exit(1);
@@ -17,11 +17,9 @@ void handle_signal(int sig)
 // Terminal resize handler
 void handle_winch(int sig)
 {
-    // Let ncurses know window size may have changed
-    endwin();
-    refresh();
-    clear();
-    // NOTE: The next game loop iteration will redraw everything.
+    (void)sig;
+    // NOTE: The next game loop iteration redraws everything, so no
+    // explicit refresh/clear is needed here.
     Logger::getInstance().log("Terminal resized (SIGWINCH received)");
 }
 

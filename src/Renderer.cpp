@@ -1,63 +1,84 @@
 #include "Renderer.hpp"
-#include "Logger.hpp"
-#include <algorithm>
+#include <cstdio>
+#include <cstdarg>
+#include <unistd.h>
 
-Renderer::~Renderer()
+Renderer::Renderer() = default;
+
+void Renderer::put(int row, int col, const std::string &text)
 {
-    if (gameWin)
-        delwin(gameWin);
-    if (sideWin)
-        delwin(sideWin);
+    term.moveCursor(row, col);
+    term.write(text);
 }
 
-void Renderer::init()
+void Renderer::putf(int row, int col, const char *fmt, ...)
 {
-    gameWin = newwin(BOARD_VISIBLE_HEIGHT + 2, BOARD_WIDTH * 2 + 2, 1, 2);
-    sideWin = newwin(BOARD_VISIBLE_HEIGHT + 2, 35, 1, BOARD_WIDTH * 2 + 4);
+    char buf[256];
+    va_list args;
+    va_start(args, fmt);
+    std::vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    put(row, col, buf);
 }
 
-void Renderer::initColors()
+void Renderer::present()
 {
-    start_color();
-    short bg = COLOR_BLACK;
-#if NCURSES_VERSION_MAJOR >= 6
-    if (use_default_colors() == OK)
-        bg = -1;
-#endif
+    term.flush();
+}
 
-    const std::array<short, 8> basic_color_ids = {{0,
-                                                   COLOR_CYAN,
-                                                   COLOR_YELLOW,
-                                                   COLOR_MAGENTA,
-                                                   COLOR_GREEN,
-                                                   COLOR_RED,
-                                                   COLOR_BLUE,
-                                                   COLOR_WHITE}};
+int Renderer::pollKey()
+{
+    return term.pollKey();
+}
 
-    const bool supports256 = (COLORS >= 256);
-    const int safeColorCount = std::max(1, COLORS);
-    for (int i = 1; i <= 7; ++i)
+void Renderer::flushInput()
+{
+    term.flushInput();
+}
+
+void Renderer::drawGameBorder()
+{
+    std::string top = "┌";
+    for (int i = 0; i < GAME_COLS - 2; ++i)
+        top += "─";
+    top += "┐";
+    put(gameRow(0), gameCol(0), top);
+
+    std::string bottom = "└";
+    for (int i = 0; i < GAME_COLS - 2; ++i)
+        bottom += "─";
+    bottom += "┘";
+    put(gameRow(GAME_ROWS - 1), gameCol(0), bottom);
+
+    for (int y = 1; y < GAME_ROWS - 1; ++y)
     {
-        short fg = supports256 ? static_cast<short>(PIECE_COLOR_IDS[i]) : basic_color_ids[i];
-        if (fg >= COLORS)
-            fg = static_cast<short>(i % safeColorCount);
-
-        if (init_pair(i, fg, bg) == ERR && bg == -1)
-            init_pair(i, fg, COLOR_BLACK);
+        put(gameRow(y), gameCol(0), "│");
+        put(gameRow(y), gameCol(GAME_COLS - 1), "│");
     }
+}
 
-    Logger::getInstance().log("Terminal COLORS=" + std::to_string(COLORS) +
-                              ", using " + (supports256 ? std::string("256-color") : std::string("basic-color")) + " palette");
+void Renderer::drawSideBorder()
+{
+    std::string horizontal = "+";
+    for (int i = 0; i < SIDE_COLS - 2; ++i)
+        horizontal += "=";
+    horizontal += "+";
+    put(sideRow(0), sideCol(0), horizontal);
+    put(sideRow(SIDE_ROWS - 1), sideCol(0), horizontal);
+
+    for (int y = 1; y < SIDE_ROWS - 1; ++y)
+    {
+        put(sideRow(y), sideCol(0), "|");
+        put(sideRow(y), sideCol(SIDE_COLS - 1), "|");
+    }
 }
 
 void Renderer::drawBoard(const Board &board, const Piece &curr)
 {
-    werase(gameWin);
-    box(gameWin, 0, 0);
+    drawGameBorder();
     auto ghostMask = board.computeGhostMask(curr);
     auto currMask = board.computeCurrentMask(curr);
     drawCells(board, curr, ghostMask, currMask);
-    wnoutrefresh(gameWin);
 }
 
 void Renderer::drawCells(const Board &board, const Piece &curr,
@@ -71,28 +92,33 @@ void Renderer::drawCells(const Board &board, const Piece &curr,
             int cell = board.cellAt(i, j);
             bool isCurrent = isCurrCell[i][j];
             bool isGhost = isGhostCell[i][j];
+            int row = gameRow(i - 2 + 1);
+            int col = gameCol(j * 2 + 1);
 
             if (isCurrent)
             {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
+                term.moveCursor(row, col);
+                term.setColor(PIECE_ANSI_COLORS[curr.shape + 1], true, true);
+                term.write("  ");
+                term.resetAttrs();
             }
             else if (isGhost && !cell)
             {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "░░");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
+                term.moveCursor(row, col);
+                term.setColor(PIECE_ANSI_COLORS[curr.shape + 1], false, true, true);
+                term.write("░░");
+                term.resetAttrs();
             }
             else if (cell)
             {
-                wattron(gameWin, COLOR_PAIR(cell) | A_REVERSE);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-                wattroff(gameWin, COLOR_PAIR(cell) | A_REVERSE);
+                term.moveCursor(row, col);
+                term.setColor(PIECE_ANSI_COLORS[cell], true);
+                term.write("  ");
+                term.resetAttrs();
             }
             else
             {
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
+                put(row, col, "  ");
             }
         }
     }
@@ -101,101 +127,100 @@ void Renderer::drawCells(const Board &board, const Piece &curr,
 void Renderer::drawInfo(int score, int level, const std::string &highscoreName, int highscoreScore,
                         const Piece &next, bool holding, const Piece &hold, bool paused)
 {
-    werase(sideWin);
-    box(sideWin, 0, 0);
-    wborder(sideWin, '|', '|', '=', '=', '+', '+', '+', '+');
-
+    drawSideBorder();
     drawScorePanel(score, level, highscoreName, highscoreScore);
     drawNextPreview(next);
     drawHoldPreview(holding, hold);
     drawControls();
     drawPauseState(paused);
-
-    wnoutrefresh(sideWin);
 }
 
 void Renderer::drawScorePanel(int score, int level, const std::string &highscoreName, int highscoreScore)
 {
-    mvwprintw(sideWin, 1, 2, "Score: %d", score);
-    mvwprintw(sideWin, 2, 2, "Level: %d", level);
-    mvwprintw(sideWin, 3, 2, "Highscore: %s %d", highscoreName.c_str(), highscoreScore);
+    putf(sideRow(1), sideCol(2), "Score: %d", score);
+    putf(sideRow(2), sideCol(2), "Level: %d", level);
+    putf(sideRow(3), sideCol(2), "Highscore: %s %d", highscoreName.c_str(), highscoreScore);
 }
 
 void Renderer::drawNextPreview(const Piece &next)
 {
-    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
-    mvwprintw(sideWin, 4, 2, "╔════ NEXT ════╗");
-    wattroff(sideWin, A_BOLD | COLOR_PAIR(next.shape + 1));
+    put(sideRow(4), sideCol(2), "╔════ NEXT ════╗");
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
         {
+            int row = sideRow(5 + y), col = sideCol(6 + x * 2);
             if (next.shape >= 0 && next.shape < 7 && TETROMINO_SHAPES[next.shape][0][y][x])
             {
-                wattron(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
-                wattroff(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
+                term.moveCursor(row, col);
+                term.setColor(PIECE_ANSI_COLORS[next.shape + 1], true);
+                term.write("  ");
+                term.resetAttrs();
             }
             else
             {
-                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
+                put(row, col, "  ");
             }
         }
-    mvwprintw(sideWin, 9, 2, "╚══════════════╝");
+    put(sideRow(9), sideCol(2), "╚══════════════╝");
 }
 
 void Renderer::drawHoldPreview(bool holding, const Piece &hold)
 {
-    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
-    mvwprintw(sideWin, 4, 19, "╔═══ HOLD ═══╗");
-    wattroff(sideWin, A_BOLD | COLOR_PAIR(6));
+    put(sideRow(4), sideCol(19), "╔═══ HOLD ═══╗");
     for (int y = 0; y < 4; ++y)
         for (int x = 0; x < 4; ++x)
         {
+            int row = sideRow(5 + y), col = sideCol(22 + x * 2);
             if (holding && hold.shape >= 0 && hold.shape < 7 && TETROMINO_SHAPES[hold.shape][0][y][x])
             {
-                wattron(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
-                wattroff(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
+                term.moveCursor(row, col);
+                term.setColor(PIECE_ANSI_COLORS[hold.shape + 1], true);
+                term.write("  ");
+                term.resetAttrs();
             }
             else
             {
-                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
+                put(row, col, "  ");
             }
         }
-    mvwprintw(sideWin, 9, 19, "╚════════════╝");
+    put(sideRow(9), sideCol(19), "╚════════════╝");
 }
 
 void Renderer::drawControls()
 {
-    int instructions_row = 10;
-    mvwprintw(sideWin, instructions_row++, 2, "╔══════════ CONTROLS ═════════╗");
-    mvwprintw(sideWin, instructions_row++, 2, "← / →      : Move");
-    mvwprintw(sideWin, instructions_row++, 2, "↓          : Soft drop");
-    mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
-    mvwprintw(sideWin, instructions_row++, 2, "⎵/Space    : Hard drop");
-    mvwprintw(sideWin, instructions_row++, 2, "C          : Hold Piece");
-    mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
-    mvwprintw(sideWin, instructions_row++, 2, "H          : Clear Highscore");
-    mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
-    mvwprintw(sideWin, instructions_row++, 2, "╚═════════════════════════════╝");
+    int row = 10;
+    put(sideRow(row++), sideCol(2), "╔══════════ CONTROLS ═════════╗");
+    put(sideRow(row++), sideCol(2), "← / →      : Move");
+    put(sideRow(row++), sideCol(2), "↓          : Soft drop");
+    put(sideRow(row++), sideCol(2), "Z/X        : Rotate");
+    put(sideRow(row++), sideCol(2), "⎵/Space    : Hard drop");
+    put(sideRow(row++), sideCol(2), "C          : Hold Piece");
+    put(sideRow(row++), sideCol(2), "P          : Pause");
+    put(sideRow(row++), sideCol(2), "H          : Clear Highscore");
+    put(sideRow(row++), sideCol(2), "Q          : Quit");
+    put(sideRow(row++), sideCol(2), "╚═════════════════════════════╝");
 }
 
 void Renderer::drawPauseState(bool paused)
 {
-    int instructions_row = 19; // Adjust if you expand controls
+    int row = 19; // Adjust if you expand controls
     if (paused)
-    {
-        wattron(sideWin, A_BOLD);
-        mvwprintw(sideWin, instructions_row + 1, 2, "||══════════ PAUSED ═════════||");
-        wattroff(sideWin, A_BOLD);
-    }
+        put(sideRow(row + 1), sideCol(2), "||══════════ PAUSED ═════════||");
+}
+
+void Renderer::clearOverlay()
+{
+    int y = BOARD_VISIBLE_HEIGHT / 2 + 1; // ansi row, matches the screens below
+    int x = BOARD_WIDTH + 8 + 1;          // leftmost prompt column (highscore prompt is widest)
+    std::string blank(50, ' ');
+    for (int dy = -1; dy <= 3; ++dy)
+        put(y + dy, x - 6, blank);
 }
 
 void Renderer::drawConfirmActionScreen(const std::string &prompt)
 {
-    int y = BOARD_VISIBLE_HEIGHT / 2, x = BOARD_WIDTH + 14;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
-    mvprintw(y - 1, x - 6, "+--------------------+");
+    int y = BOARD_VISIBLE_HEIGHT / 2 + 1, x = BOARD_WIDTH + 14 + 1;
+    put(y - 1, x - 6, "+--------------------+");
     std::string msg = prompt.substr(0, 18);
     int pad = (18 - msg.length()) / 2;
     std::string line = "| ";
@@ -203,33 +228,69 @@ void Renderer::drawConfirmActionScreen(const std::string &prompt)
     line += msg;
     line += std::string(18 - pad - msg.length(), ' ');
     line += " |";
-    mvprintw(y, x - 6, "%s", line.c_str());
-    mvprintw(y + 1, x - 6, "|    Y=YES   N=NO    |");
-    mvprintw(y + 2, x - 6, "+--------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
+    put(y, x - 6, line);
+    put(y + 1, x - 6, "|    Y=YES   N=NO    |");
+    put(y + 2, x - 6, "+--------------------+");
 }
 
 void Renderer::drawGameOverScreen()
 {
-    int y = BOARD_VISIBLE_HEIGHT / 2, x = BOARD_WIDTH + 14;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
-    mvprintw(y - 1, x - 6, "+--------------------+");
-    mvprintw(y, x - 6, "|    GAME  OVER!     |");
-    mvprintw(y + 1, x - 6, "| R=Restart  Q=Quit  |");
-    mvprintw(y + 2, x - 6, "+--------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
+    int y = BOARD_VISIBLE_HEIGHT / 2 + 1, x = BOARD_WIDTH + 14 + 1;
+    put(y - 1, x - 6, "+--------------------+");
+    put(y, x - 6, "|    GAME  OVER!     |");
+    put(y + 1, x - 6, "| R=Restart  Q=Quit  |");
+    put(y + 2, x - 6, "+--------------------+");
 }
 
 void Renderer::drawHighscorePrompt()
 {
-    int y = BOARD_VISIBLE_HEIGHT / 2, x = BOARD_WIDTH + 8;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
-    mvprintw(y - 1, x - 6, "+---------------------------------------+");
-    mvprintw(y, x - 6, "| NEW HIGHSCORE! Enter name:            |");
-    mvprintw(y + 1, x - 6, "+---------------------------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
-    move(y, x - 6 + 28); // 28 is after "NEW HIGHSCORE! Enter name: "
+    int y = BOARD_VISIBLE_HEIGHT / 2 + 1, x = BOARD_WIDTH + 8 + 1;
+    put(y - 1, x - 6, "+---------------------------------------+");
+    put(y, x - 6, "| NEW HIGHSCORE! Enter name:            |");
+    put(y + 1, x - 6, "+---------------------------------------+");
+    nameInputRow = y;
+    nameInputCol = x - 6 + 28; // 28 is after "NEW HIGHSCORE! Enter name: "
 }
+
+std::string Renderer::promptHighscoreName(size_t maxLen)
+{
+    std::string name;
+    term.showCursor();
+    term.moveCursor(nameInputRow, nameInputCol);
+    present();
+
+    while (true)
+    {
+        int key = term.pollKey();
+        if (key == Terminal::None)
+        {
+            usleep(10 * 1000);
+            continue;
+        }
+        if (key == '\n' || key == '\r')
+            break;
+        if (key == 127 || key == 8) // backspace
+        {
+            if (!name.empty())
+            {
+                name.pop_back();
+                term.moveCursor(nameInputRow, nameInputCol + static_cast<int>(name.size()));
+                term.write(" ");
+                term.moveCursor(nameInputRow, nameInputCol + static_cast<int>(name.size()));
+                present();
+            }
+            continue;
+        }
+        if (key >= 32 && key < 127 && name.size() < maxLen)
+        {
+            name += static_cast<char>(key);
+            term.write(std::string(1, static_cast<char>(key)));
+            present();
+        }
+    }
+
+    term.hideCursor();
+    present();
+    return name;
+}
+

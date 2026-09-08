@@ -46,13 +46,13 @@ const std::array<std::array<std::array<std::array<char, 4>, 4>, 4>, 7> TETROMINO
 
 }};
 
-const std::array<int, 8> PIECE_COLOR_IDS = {{
-    0,   // unused
-    51,  // I - Bright Cyan
-    226, // O - Yellow
-    201, // T - Magenta
-    46,  // S - Green
-    196, // Z - Red
-    21,  // J - Blue
-    214  // L - Orange
+const std::array<int, 8> PIECE_ANSI_COLORS = {{
+    0, // unused
+    6, // I - Cyan
+    3, // O - Yellow
+    5, // T - Magenta
+    2, // S - Green
+    1, // Z - Red
+    4, // J - Blue
+    7  // L - White
 }};

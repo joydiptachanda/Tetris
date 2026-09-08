@@ -1,10 +1,3 @@
-sudo apt-get install libncurses5-dev libncursesw5-dev
-
-# If colors look gray/black in MobaXterm, ensure terminal type supports colors:
-# In MobaXterm: Settings -> Terminal -> Terminal type = xterm-256color
-# Or in the shell before launch:
-# export TERM=xterm-256color
-
 rm -rf build
 mkdir build
 cd build

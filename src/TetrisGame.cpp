@@ -1,5 +1,4 @@
 #include "TetrisGame.hpp"
-#include <locale.h>
 #include <unistd.h>
 #include <algorithm>
 
@@ -17,18 +16,6 @@ TetrisGame::TetrisGame()
       hardDropped(false), boardDirty(true), infoDirty(true)
 {
     board.reset();
-
-    setlocale(LC_ALL, "");
-
-    initscr();
-    if (has_colors())
-        renderer.initColors();
-    noecho();
-    curs_set(0);
-    nodelay(stdscr, TRUE);
-    keypad(stdscr, TRUE);
-
-    renderer.init();
 
     highscore.load();
 
@@ -48,10 +35,7 @@ TetrisGame::TetrisGame()
     Logger::getInstance().log("Game initialized.");
 }
 
-TetrisGame::~TetrisGame()
-{
-    endwin();
-}
+TetrisGame::~TetrisGame() = default;
 
 void TetrisGame::spawnPiece()
 {
@@ -93,7 +77,7 @@ void TetrisGame::redrawAll()
 {
     renderer.drawBoard(board, curr);
     renderer.drawInfo(score, level, highscore.name(), highscore.score(), next, holding, hold, paused);
-    doupdate();
+    renderer.present();
 }
 
 void TetrisGame::handleInput(int ch)
@@ -242,15 +226,15 @@ bool TetrisGame::handleMoveKey(int ch, Piece &temp)
 
     switch (ch)
     {
-    case KEY_LEFT:
+    case Terminal::Left:
         --temp.x;
         Logger::getInstance().log("Left key pressed. x=" + std::to_string(temp.x));
         break;
-    case KEY_RIGHT:
+    case Terminal::Right:
         ++temp.x;
         Logger::getInstance().log("Right key pressed. x=" + std::to_string(temp.x));
         break;
-    case KEY_DOWN:
+    case Terminal::Down:
         softDropAttempt = true;
         ++temp.y;
         Logger::getInstance().log("Down key pressed. y=" + std::to_string(temp.y));
@@ -431,38 +415,36 @@ void TetrisGame::awardScoreAndLevel(int lines)
     infoDirty = true;
 }
 
+int TetrisGame::waitForKey()
+{
+    int key;
+    while ((key = renderer.pollKey()) == Terminal::None)
+        usleep(10 * 1000);
+    return key;
+}
+
 bool TetrisGame::confirmAction(const std::string &prompt)
 {
-    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
     renderer.drawConfirmActionScreen(prompt);
-    refresh();
+    renderer.present();
 
-    nodelay(stdscr, FALSE); // block while waiting for y/n instead of busy-spinning
-    int response;
     bool result = false;
     while (true)
     {
-        response = getch();
+        int response = waitForKey();
         if (response == 'y' || response == 'Y')
         {
             result = true;
             break;
         }
-        if (response == 'n' || response == 'N' || response == 27)
+        if (response == 'n' || response == 'N' || response == Terminal::Escape)
         {
             result = false;
             break;
         }
     }
-    nodelay(stdscr, TRUE); // restore non-blocking mode for the main loop
 
-    for (int dy = -1; dy <= 2; ++dy)
-    {
-        move(y + dy, x - 6);
-        clrtoeol();
-    }
-    refresh();
-
+    renderer.clearOverlay();
     redrawAll();
 
     return result;
@@ -473,62 +455,37 @@ void TetrisGame::gameOver()
     // CHECK AND UPDATE HIGHSCORE FIRST!
     if (score > highscore.score())
     {
-        // BLOCKING MODE and FLUSH buffered KEYS
-        nodelay(stdscr, FALSE);
-        flushinp();
-
-        char name_buf[32] = "---";
-        move(HEIGHT + 1, WIDTH * 2 + 5);
-        clrtoeol();
+        renderer.flushInput();
         renderer.drawHighscorePrompt();
-        echo();
-        curs_set(1);
-        getnstr(name_buf, 31);
-        curs_set(0);
-        noecho();
+        std::string name = renderer.promptHighscoreName(31);
 
-        if (name_buf[0] == '\0')
-            highscore.set("---", score);
-        else
-            highscore.set(name_buf, score);
+        highscore.set(name.empty() ? "---" : name, score);
         infoDirty = true;
         highscore.save();
-        Logger::getInstance().log(std::string("Name entered: [") + name_buf + "]");
-        move(HEIGHT + 1, WIDTH * 2 + 5);
-        clrtoeol();
-        refresh();
-
-        nodelay(stdscr, TRUE); // Set back to non-blocking for rest of game
+        Logger::getInstance().log(std::string("Name entered: [") + name + "]");
+        renderer.clearOverlay();
     }
     infoDirty = true;
     boardDirty = true;
 
     renderer.drawGameOverScreen();
-    nodelay(stdscr, FALSE);
+    renderer.present();
 
-    int k;
     while (true)
     {
-        k = getch();
+        int k = waitForKey();
         if (k == 'r' || k == 'R')
         {
             restartGame();
             running = true;
-            nodelay(stdscr, TRUE);
-            // Clear the game over message line after restart or quit
-            move(HEIGHT, WIDTH * 2 + 5);
-            clrtoeol(); // Clear to end of line, requires #include <ncurses.h>
-            refresh();
+            renderer.clearOverlay();
             Logger::getInstance().log("Game restarted.");
             return;
         }
         else if (k == 'q' || k == 'Q')
         {
-            // Clear the game over message line after restart or quit
-            move(HEIGHT, WIDTH * 2 + 5);
-            clrtoeol(); // Clear to end of line, requires #include <ncurses.h>
-            refresh();
-            nodelay(stdscr, TRUE); // restore non-blocking mode, symmetric with the restart branch
+            renderer.clearOverlay();
+            renderer.present();
             running = false;
             break;
         }
@@ -542,7 +499,7 @@ void TetrisGame::run()
     while (running)
     {
         usleep(30 * 1000);
-        int ch = getch();
+        int ch = renderer.pollKey();
 
         handleInput(ch);
         if (!paused)
@@ -552,7 +509,7 @@ void TetrisGame::run()
             renderer.drawBoard(board, curr);
         if (infoDirty)
             renderer.drawInfo(score, level, highscore.name(), highscore.score(), next, holding, hold, paused);
-        doupdate();
+        renderer.present();
 
         boardDirty = false;
         infoDirty = false;

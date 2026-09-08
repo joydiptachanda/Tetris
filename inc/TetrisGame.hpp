@@ -1,5 +1,4 @@
 #pragma once
-#include <ncursesw/ncurses.h>
 #include <queue>
 #include <random>
 #include <string>
@@ -65,4 +64,5 @@ private:
 
     // Yes or no prompt function
     bool confirmAction(const std::string &prompt);
+    int waitForKey(); // blocks (via short sleeps) until a key is available
 };

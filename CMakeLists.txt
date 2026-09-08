@@ -11,10 +11,6 @@ file(GLOB SOURCES "src/*.cpp")
 
 add_executable(tetris ${SOURCES})
 
-set(CURSES_NEED_WIDE TRUE)
-find_package(Curses REQUIRED)
-target_link_libraries(tetris PRIVATE ${CURSES_LIBRARIES} ncursesw)
-
 find_program(CPPCHECK_EXE cppcheck)
 if(CPPCHECK_EXE)
     add_custom_target(analyze
