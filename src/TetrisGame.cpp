@@ -3,63 +3,8 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <cstring>
-
-const std::array<std::array<std::array<std::array<char, 4>, 4>, 4>, 7> TetrisGame::tetromino = {{
-
-    // I
-    {{{{{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}}},
-      {{{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}}}}},
-
-    // O
-    {{{{{0, 0, 0, 0}, {0, 2, 2, 0}, {0, 2, 2, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {0, 2, 2, 0}, {0, 2, 2, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {0, 2, 2, 0}, {0, 2, 2, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {0, 2, 2, 0}, {0, 2, 2, 0}, {0, 0, 0, 0}}}}},
-
-    // T
-    {{{{{0, 0, 0, 0}, {3, 3, 3, 0}, {0, 3, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 3, 0, 0}, {3, 3, 0, 0}, {0, 3, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 3, 0, 0}, {3, 3, 3, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 3, 0, 0}, {0, 3, 3, 0}, {0, 3, 0, 0}, {0, 0, 0, 0}}}}},
-
-    // S
-    {{{{{0, 0, 0, 0}, {0, 4, 4, 0}, {4, 4, 0, 0}, {0, 0, 0, 0}}},
-      {{{4, 0, 0, 0}, {4, 4, 0, 0}, {0, 4, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {0, 4, 4, 0}, {4, 4, 0, 0}, {0, 0, 0, 0}}},
-      {{{4, 0, 0, 0}, {4, 4, 0, 0}, {0, 4, 0, 0}, {0, 0, 0, 0}}}}},
-
-    // Z
-    {{{{{0, 0, 0, 0}, {5, 5, 0, 0}, {0, 5, 5, 0}, {0, 0, 0, 0}}},
-      {{{0, 5, 0, 0}, {5, 5, 0, 0}, {5, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {5, 5, 0, 0}, {0, 5, 5, 0}, {0, 0, 0, 0}}},
-      {{{0, 5, 0, 0}, {5, 5, 0, 0}, {5, 0, 0, 0}, {0, 0, 0, 0}}}}},
-
-    // J
-    {{{{{0, 6, 0, 0}, {0, 6, 0, 0}, {6, 6, 0, 0}, {0, 0, 0, 0}}},
-      {{{6, 0, 0, 0}, {6, 6, 6, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 6, 6, 0}, {0, 6, 0, 0}, {0, 6, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {6, 6, 6, 0}, {0, 0, 6, 0}, {0, 0, 0, 0}}}}},
-
-    // L
-    {{{{{0, 7, 0, 0}, {0, 7, 0, 0}, {0, 7, 7, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 0, 0}, {7, 7, 7, 0}, {7, 0, 0, 0}, {0, 0, 0, 0}}},
-      {{{7, 7, 0, 0}, {0, 7, 0, 0}, {0, 7, 0, 0}, {0, 0, 0, 0}}},
-      {{{0, 0, 7, 0}, {7, 7, 7, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}}}}
-
-}};
-
-const std::array<int, 8> TetrisGame::piece_color_ids = {{
-    0,   // unused
-    51,  // I - Bright Cyan
-    226, // O - Yellow
-    201, // T - Magenta
-    46,  // S - Green
-    196, // Z - Red
-    21,  // J - Blue
-    214  // L - Orange
-}};
+#include <algorithm>
+#include <random>
 
 // For improved randomization
 void TetrisGame::refillBag()
@@ -74,26 +19,24 @@ void TetrisGame::refillBag()
 
 TetrisGame::TetrisGame()
     : score(0), level(1), delay(500), frame(0), running(true),
-      gameWin(nullptr), sideWin(nullptr),
       hardDropped(false), boardDirty(true), infoDirty(true)
 {
-    field = {};
+    board.reset();
 
     setlocale(LC_ALL, "");
     srand((unsigned)time(0));
 
     initscr();
     if (has_colors())
-        initColors256();
+        renderer.initColors();
     noecho();
     curs_set(0);
     nodelay(stdscr, TRUE);
     keypad(stdscr, TRUE);
 
-    gameWin = newwin(VISIBLE_HEIGHT + 2, WIDTH * 2 + 2, 1, 2);
-    sideWin = newwin(VISIBLE_HEIGHT + 2, 35, 1, WIDTH * 2 + 4);
+    renderer.init();
 
-    loadHighscore();
+    highscore.load();
 
     // Implement "Hold Piece" Feature
     holding = false;          // No held piece at start
@@ -116,273 +59,6 @@ TetrisGame::~TetrisGame()
     endwin();
 }
 
-void TetrisGame::initColors256()
-{
-    start_color();
-    short bg = COLOR_BLACK;
-#if NCURSES_VERSION_MAJOR >= 6
-    if (use_default_colors() == OK)
-        bg = -1;
-#endif
-
-    const std::array<short, 8> basic_color_ids = {{
-        0,
-        COLOR_CYAN,
-        COLOR_YELLOW,
-        COLOR_MAGENTA,
-        COLOR_GREEN,
-        COLOR_RED,
-        COLOR_BLUE,
-        COLOR_WHITE}};
-
-    const bool supports256 = (COLORS >= 256);
-    const int safeColorCount = std::max(1, COLORS);
-    for (int i = 1; i <= 7; ++i)
-    {
-        short fg = supports256 ? static_cast<short>(piece_color_ids[i]) : basic_color_ids[i];
-        if (fg >= COLORS)
-            fg = static_cast<short>(i % safeColorCount);
-
-        if (init_pair(i, fg, bg) == ERR && bg == -1)
-            init_pair(i, fg, COLOR_BLACK);
-    }
-
-    Logger::getInstance().log("Terminal COLORS=" + std::to_string(COLORS) +
-                              ", using " + (supports256 ? std::string("256-color") : std::string("basic-color")) + " palette");
-}
-
-bool TetrisGame::check(const Piece &p) const
-{
-    if (p.shape < 0 || p.shape >= 7 || p.rot < 0 || p.rot >= 4)
-        return false;
-    for (int dy = 0; dy < 4; ++dy)
-        for (int dx = 0; dx < 4; ++dx)
-            if (tetromino[p.shape][p.rot][dy][dx])
-            {
-                int ny = p.y + dy, nx = p.x + dx;
-                if (ny < 0 || ny >= HEIGHT || nx < 0 || nx >= WIDTH)
-                    return false;
-                if (field[ny][nx])
-                    return false;
-            }
-    return true;
-}
-
-void TetrisGame::merge(const Piece &p)
-{
-    if (p.shape < 0 || p.shape >= 7 || p.rot < 0 || p.rot >= 4)
-        return;
-    for (int dy = 0; dy < 4; ++dy)
-        for (int dx = 0; dx < 4; ++dx)
-            if (tetromino[p.shape][p.rot][dy][dx])
-            {
-                int ny = p.y + dy, nx = p.x + dx;
-                field[ny][nx] = p.shape + 1;
-            }
-}
-
-int TetrisGame::clearLines()
-{
-    int lines = 0;
-    for (int i = HEIGHT - 1; i >= 0; i--)
-    {
-        if (std::all_of(field[i].begin(), field[i].end(), [](int x)
-                        { return x != 0; }))
-        {
-            ++lines;
-            for (int k = i; k > 0; --k)
-                field[k] = field[k - 1];
-            field[0] = {};
-            ++i;
-        }
-    }
-
-    return lines;
-}
-
-// Function to Find Ghost Position
-TetrisGame::Piece TetrisGame::getGhostPiece() const
-{
-    Piece ghost = curr;
-    while (check(ghost))
-        ++ghost.y;
-    --ghost.y;
-    return ghost;
-}
-
-void TetrisGame::drawBoard() const
-{
-    werase(gameWin);
-    box(gameWin, 0, 0);
-    auto ghostMasks = computeGhostMask();
-    auto currMasks = computeCurrentMask();
-    drawCells(ghostMasks, currMasks);
-    wnoutrefresh(gameWin);
-}
-
-std::array<std::array<bool, TetrisGame::WIDTH>, TetrisGame::HEIGHT>
-TetrisGame::computeGhostMask() const
-{
-    std::array<std::array<bool, WIDTH>, HEIGHT> ghostMask{};
-    const Piece ghost = getGhostPiece();
-    for (int dy = 0; dy < 4; ++dy)
-        for (int dx = 0; dx < 4; ++dx)
-            if (ghost.shape >= 0 && ghost.shape < 7 && ghost.rot >= 0 && ghost.rot < 4 &&
-                tetromino[ghost.shape][ghost.rot][dy][dx])
-            {
-                int ny = ghost.y + dy, nx = ghost.x + dx;
-                if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
-                    ghostMask[ny][nx] = true;
-            }
-    return ghostMask;
-}
-
-std::array<std::array<bool, TetrisGame::WIDTH>, TetrisGame::HEIGHT>
-TetrisGame::computeCurrentMask() const
-{
-    std::array<std::array<bool, WIDTH>, HEIGHT> currMask{};
-    for (int dy = 0; dy < 4; ++dy)
-        for (int dx = 0; dx < 4; ++dx)
-            if (curr.shape >= 0 && curr.shape < 7 && curr.rot >= 0 && curr.rot < 4 &&
-                tetromino[curr.shape][curr.rot][dy][dx])
-            {
-                int ny = curr.y + dy, nx = curr.x + dx;
-                if (ny >= 2 && ny < HEIGHT && nx >= 0 && nx < WIDTH)
-                    currMask[ny][nx] = true;
-            }
-    return currMask;
-}
-
-void TetrisGame::drawCells(
-    const std::array<std::array<bool, WIDTH>, HEIGHT> &isGhostCell,
-    const std::array<std::array<bool, WIDTH>, HEIGHT> &isCurrCell) const
-{
-    for (int i = 2; i < HEIGHT; ++i)
-    {
-        for (int j = 0; j < WIDTH; ++j)
-        {
-            int cell = field[i][j];
-            bool isCurrent = isCurrCell[i][j];
-            bool isGhost = isGhostCell[i][j];
-
-            if (isCurrent)
-            {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_REVERSE | A_BOLD);
-            }
-            else if (isGhost && !cell)
-            {
-                wattron(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "░░");
-                wattroff(gameWin, COLOR_PAIR(curr.shape + 1) | A_DIM | A_BOLD);
-            }
-            else if (cell)
-            {
-                wattron(gameWin, COLOR_PAIR(cell) | A_REVERSE);
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-                wattroff(gameWin, COLOR_PAIR(cell) | A_REVERSE);
-            }
-            else
-            {
-                mvwprintw(gameWin, i - 2 + 1, j * 2 + 1, "  ");
-            }
-        }
-    }
-}
-
-void TetrisGame::drawInfo() const
-{
-    werase(sideWin);
-    box(sideWin, 0, 0);
-    wborder(sideWin, '|', '|', '=', '=', '+', '+', '+', '+');
-
-    drawScorePanel();
-    drawNextPreview();
-    drawHoldPreview();
-    drawControls();
-    drawPauseState();
-
-    wnoutrefresh(sideWin);
-}
-
-void TetrisGame::drawScorePanel() const
-{
-    mvwprintw(sideWin, 1, 2, "Score: %d", score);
-    mvwprintw(sideWin, 2, 2, "Level: %d", level);
-    mvwprintw(sideWin, 3, 2, "Highscore: %s %d", highscore_name.c_str(), highscore_score);
-}
-
-void TetrisGame::drawNextPreview() const
-{
-    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
-    mvwprintw(sideWin, 4, 2, "╔════ NEXT ════╗");
-    wattroff(sideWin, A_BOLD | COLOR_PAIR(next.shape + 1));
-    for (int y = 0; y < 4; ++y)
-        for (int x = 0; x < 4; ++x)
-        {
-            if (next.shape >= 0 && next.shape < 7 && tetromino[next.shape][0][y][x])
-            {
-                wattron(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
-                wattroff(sideWin, COLOR_PAIR(next.shape + 1) | A_REVERSE);
-            }
-            else
-            {
-                mvwprintw(sideWin, 5 + y, 6 + x * 2, "  ");
-            }
-        }
-    mvwprintw(sideWin, 9, 2, "╚══════════════╝");
-}
-
-void TetrisGame::drawHoldPreview() const
-{
-    wattron(sideWin, A_BOLD | COLOR_PAIR(0));
-    mvwprintw(sideWin, 4, 19, "╔═══ HOLD ═══╗");
-    wattroff(sideWin, A_BOLD | COLOR_PAIR(6));
-    for (int y = 0; y < 4; ++y)
-        for (int x = 0; x < 4; ++x)
-        {
-            if (holding && hold.shape >= 0 && hold.shape < 7 && tetromino[hold.shape][0][y][x])
-            {
-                wattron(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
-                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
-                wattroff(sideWin, COLOR_PAIR(hold.shape + 1) | A_REVERSE);
-            }
-            else
-            {
-                mvwprintw(sideWin, 5 + y, 22 + x * 2, "  ");
-            }
-        }
-    mvwprintw(sideWin, 9, 19, "╚════════════╝");
-}
-
-void TetrisGame::drawControls() const
-{
-    int instructions_row = 10;
-    mvwprintw(sideWin, instructions_row++, 2, "╔══════════ CONTROLS ═════════╗");
-    mvwprintw(sideWin, instructions_row++, 2, "← / →      : Move");
-    mvwprintw(sideWin, instructions_row++, 2, "↓          : Soft drop");
-    mvwprintw(sideWin, instructions_row++, 2, "Z/X        : Rotate");
-    mvwprintw(sideWin, instructions_row++, 2, "⎵/Space    : Hard drop");
-    mvwprintw(sideWin, instructions_row++, 2, "C          : Hold Piece");
-    mvwprintw(sideWin, instructions_row++, 2, "P          : Pause");
-    mvwprintw(sideWin, instructions_row++, 2, "H          : Clear Highscore");
-    mvwprintw(sideWin, instructions_row++, 2, "Q          : Quit");
-    mvwprintw(sideWin, instructions_row++, 2, "╚═════════════════════════════╝");
-}
-
-void TetrisGame::drawPauseState() const
-{
-    int instructions_row = 19; // Adjust if you expand controls
-    if (paused)
-    {
-        wattron(sideWin, A_BOLD);
-        mvwprintw(sideWin, instructions_row + 1, 2, "||══════════ PAUSED ═════════||");
-        wattroff(sideWin, A_BOLD);
-    }
-}
-
 void TetrisGame::spawnPiece()
 {
     curr = next;
@@ -396,6 +72,34 @@ void TetrisGame::spawnPiece()
     holdUsedThisTurn = false;
     Logger::getInstance().log("Spawning piece: " + std::to_string(curr.shape) +
                               " at x=" + std::to_string(curr.x) + ", y=" + std::to_string(curr.y));
+}
+
+void TetrisGame::restartGame()
+{
+    board.reset();
+    score = 0;
+    level = 1;
+    delay = 500;
+    frame = 0;
+    holding = false;
+    holdUsedThisTurn = false;
+    paused = false;
+    pieceQueue = std::queue<int>();
+    refillBag();
+    if (pieceQueue.empty())
+        refillBag();
+    int pieceType = pieceQueue.front();
+    pieceQueue.pop();
+    next = {pieceType, 0, WIDTH / 2 - 2, 0};
+    spawnPiece();
+    boardDirty = infoDirty = true;
+}
+
+void TetrisGame::redrawAll()
+{
+    renderer.drawBoard(board, curr);
+    renderer.drawInfo(score, level, highscore.name(), highscore.score(), next, holding, hold, paused);
+    doupdate();
 }
 
 void TetrisGame::handleInput(int ch)
@@ -491,9 +195,8 @@ bool TetrisGame::handleClearHighscoreKey(int ch)
     {
         if (confirmAction("CLEAR HIGHSCORE?"))
         {
-            highscore_name = "---";
-            highscore_score = 0;
-            saveHighscore();
+            highscore.set("---", 0);
+            highscore.save();
             Logger::getInstance().log("Highscore cleared by user.");
             infoDirty = true;
         }
@@ -527,23 +230,7 @@ bool TetrisGame::handleRestartKey(int ch)
         if (confirmAction("RESTART GAME?"))
         {
             Logger::getInstance().log("Restart key pressed (confirmed).");
-            field = {};
-            score = 0;
-            level = 1;
-            delay = 500;
-            frame = 0;
-            holding = false;
-            holdUsedThisTurn = false;
-            paused = false;
-            pieceQueue = std::queue<int>();
-            refillBag();
-            if (pieceQueue.empty())
-                refillBag();
-            int pieceType = pieceQueue.front();
-            pieceQueue.pop();
-            next = {pieceType, 0, WIDTH / 2 - 2, 0};
-            spawnPiece();
-            boardDirty = infoDirty = true;
+            restartGame();
             Logger::getInstance().log("Game restarted by user.");
         }
         else
@@ -577,7 +264,7 @@ bool TetrisGame::handleMoveKey(int ch, Piece &temp)
     default:
         return false;
     }
-    if (check(temp))
+    if (board.check(temp))
     {
         if (softDropAttempt)
         {
@@ -607,7 +294,7 @@ bool TetrisGame::handleRotateKey(int ch, Piece &temp)
             Piece ktemp = temp;
             ktemp.x += o[0];
             ktemp.y += o[1];
-            if (check(ktemp))
+            if (board.check(ktemp))
             {
                 temp = ktemp;
                 kicked = true;
@@ -623,7 +310,7 @@ bool TetrisGame::handleRotateKey(int ch, Piece &temp)
             Piece ktemp = temp;
             ktemp.x += o[0];
             ktemp.y += o[1];
-            if (check(ktemp))
+            if (board.check(ktemp))
             {
                 temp = ktemp;
                 kicked = true;
@@ -635,7 +322,7 @@ bool TetrisGame::handleRotateKey(int ch, Piece &temp)
         temp.rot = old_rot;
     Logger::getInstance().log(std::string("Rotate ") + (ch == 'z' ? "left" : "right") +
                               ", wall kick, rot=" + std::to_string(temp.rot));
-    if (check(temp))
+    if (board.check(temp))
         return true;
     return false;
 }
@@ -645,7 +332,7 @@ bool TetrisGame::handleDropKey(int ch, Piece &temp)
     if (ch != ' ')
         return false;
     int dropDistance = 0;
-    while (check(temp))
+    while (board.check(temp))
     {
         ++temp.y;
         ++dropDistance;
@@ -668,13 +355,13 @@ void TetrisGame::applyGravity()
     if (hardDropped)
     {
         Logger::getInstance().log("Piece instantly merged from hard drop.");
-        merge(curr);
+        board.merge(curr);
         boardDirty = true;
-        int lines = clearLines();
+        int lines = board.clearLines();
         awardScoreAndLevel(lines);
         spawnPiece();
         infoDirty = true; // Next/hold panel may change
-        if (!check(curr))
+        if (!board.check(curr))
         {
             Logger::getInstance().log("Game Over: spawn not possible.");
             infoDirty = true;
@@ -691,7 +378,7 @@ void TetrisGame::applyGravity()
         frame = 0;
         Piece fall = curr;
         ++fall.y;
-        if (check(fall))
+        if (board.check(fall))
         {
             curr = fall;
             boardDirty = true;
@@ -701,13 +388,13 @@ void TetrisGame::applyGravity()
         {
             Logger::getInstance().log("Piece cannot fall; merging at (x=" +
                                       std::to_string(curr.x) + ", y=" + std::to_string(curr.y) + ")");
-            merge(curr);
+            board.merge(curr);
             boardDirty = true;
-            int lines = clearLines();
+            int lines = board.clearLines();
             awardScoreAndLevel(lines);
             spawnPiece();
             infoDirty = true;
-            if (!check(curr))
+            if (!board.check(curr))
             {
                 Logger::getInstance().log("Game Over: spawn not possible.");
                 infoDirty = boardDirty = true;
@@ -750,65 +437,10 @@ void TetrisGame::awardScoreAndLevel(int lines)
     infoDirty = true;
 }
 
-void TetrisGame::saveHighscore()
-{
-    std::ofstream fout("highscore.txt");
-    fout << highscore_name << " " << highscore_score << "\n";
-    Logger::getInstance().log("Highscore: saved as [" + highscore_name + "] " + std::to_string(highscore_score));
-}
-
-void TetrisGame::loadHighscore()
-{
-    highscore_name = "---";
-    highscore_score = 0;
-    std::ifstream fin("highscore.txt");
-    std::string line;
-    if (std::getline(fin, line))
-    {
-        std::istringstream iss(line);
-        std::vector<std::string> tokens;
-        std::string tok;
-        while (iss >> tok)
-            tokens.push_back(tok);
-        if (tokens.size() >= 2)
-        {
-            highscore_score = std::stoi(tokens.back());
-            tokens.pop_back();
-            highscore_name = "";
-            for (size_t i = 0; i < tokens.size(); ++i)
-            {
-                if (i)
-                    highscore_name += " ";
-                highscore_name += tokens[i];
-            }
-        }
-    }
-    Logger::getInstance().log("Loaded highscore [" + highscore_name + "] " + std::to_string(highscore_score));
-}
-
-void TetrisGame::drawConfirmActionScreen(const std::string &prompt)
-{
-    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
-    mvprintw(y - 1, x - 6, "+--------------------+");
-    std::string msg = prompt.substr(0, 18);
-    int pad = (18 - msg.length()) / 2;
-    std::string line = "| ";
-    line += std::string(pad, ' ');
-    line += msg;
-    line += std::string(18 - pad - msg.length(), ' ');
-    line += " |";
-    mvprintw(y, x - 6, "%s", line.c_str());
-    mvprintw(y + 1, x - 6, "|    Y=YES   N=NO    |");
-    mvprintw(y + 2, x - 6, "+--------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
-}
-
 bool TetrisGame::confirmAction(const std::string &prompt)
 {
     int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
-    drawConfirmActionScreen(prompt);
+    renderer.drawConfirmActionScreen(prompt);
     refresh();
     int response;
     bool result = false;
@@ -834,42 +466,15 @@ bool TetrisGame::confirmAction(const std::string &prompt)
     }
     refresh();
 
-    drawBoard();
-    drawInfo();
-    doupdate();
+    redrawAll();
 
     return result;
-}
-
-void TetrisGame::drawGameOverScreen()
-{
-    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0));
-    mvprintw(y - 1, x - 6, "+--------------------+");
-    mvprintw(y, x - 6, "|    GAME  OVER!     |");
-    mvprintw(y + 1, x - 6, "| R=Restart  Q=Quit  |");
-    mvprintw(y + 2, x - 6, "+--------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
-}
-
-void TetrisGame::drawHighscorePrompt() const
-{
-    int y = VISIBLE_HEIGHT / 2, x = WIDTH + 8;
-    wattron(stdscr, A_BOLD | COLOR_PAIR(0)); // Use bright yellow
-    mvprintw(y - 1, x - 6, "+---------------------------------------+");
-    mvprintw(y, x - 6, "| NEW HIGHSCORE! Enter name:            |");
-    mvprintw(y + 1, x - 6, "+---------------------------------------+");
-    wattroff(stdscr, A_BOLD | COLOR_PAIR(0));
-    refresh();
-    // Optionally, place cursor ready for name entry:
-    move(y, x - 6 + 28); // 28 is after "NEW HIGHSCORE! Enter name: "
 }
 
 void TetrisGame::gameOver()
 {
     // CHECK AND UPDATE HIGHSCORE FIRST!
-    if (score > highscore_score)
+    if (score > highscore.score())
     {
         // BLOCKING MODE and FLUSH buffered KEYS
         nodelay(stdscr, FALSE);
@@ -878,8 +483,7 @@ void TetrisGame::gameOver()
         char name_buf[32] = "---";
         move(HEIGHT + 1, WIDTH * 2 + 5);
         clrtoeol();
-        // mvprintw(HEIGHT + 1, WIDTH * 2 + 5, "NEW HIGHSCORE! Enter name: ");
-        drawHighscorePrompt();
+        renderer.drawHighscorePrompt();
         echo();
         curs_set(1);
         getnstr(name_buf, 31);
@@ -888,10 +492,9 @@ void TetrisGame::gameOver()
 
         if (name_buf[0] == '\0')
             strcpy(name_buf, "---");
-        highscore_name = name_buf;
-        highscore_score = score;
+        highscore.set(name_buf, score);
         infoDirty = true;
-        saveHighscore();
+        highscore.save();
         Logger::getInstance().log(std::string("Name entered: [") + name_buf + "]");
         move(HEIGHT + 1, WIDTH * 2 + 5);
         clrtoeol();
@@ -902,7 +505,7 @@ void TetrisGame::gameOver()
     infoDirty = true;
     boardDirty = true;
 
-    drawGameOverScreen();
+    renderer.drawGameOverScreen();
     nodelay(stdscr, FALSE);
 
     int k;
@@ -911,25 +514,7 @@ void TetrisGame::gameOver()
         k = getch();
         if (k == 'r' || k == 'R')
         {
-            // Reset all fields
-            for (int i = 0; i < HEIGHT; ++i)
-                for (int j = 0; j < WIDTH; ++j)
-                    field[i][j] = 0;
-            score = 0;
-            level = 1;
-            delay = 500;
-            frame = 0;
-            holding = false;
-            holdUsedThisTurn = false;
-            paused = false;
-            pieceQueue = std::queue<int>();
-            refillBag();
-            if (pieceQueue.empty())
-                refillBag();
-            int pieceType = pieceQueue.front();
-            pieceQueue.pop();
-            next = {pieceType, 0, WIDTH / 2 - 2, 0};
-            spawnPiece();
+            restartGame();
             running = true;
             nodelay(stdscr, TRUE);
             // Clear the game over message line after restart or quit
@@ -965,9 +550,9 @@ void TetrisGame::run()
             applyGravity();
 
         if (boardDirty)
-            drawBoard();
+            renderer.drawBoard(board, curr);
         if (infoDirty)
-            drawInfo();
+            renderer.drawInfo(score, level, highscore.name(), highscore.score(), next, holding, hold, paused);
         doupdate();
 
         boardDirty = false;
