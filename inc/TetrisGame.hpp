@@ -1,6 +1,7 @@
 #pragma once
 #include <ncursesw/ncurses.h>
 #include <queue>
+#include <random>
 #include <string>
 #include "Tetromino.hpp"
 #include "Board.hpp"
@@ -23,15 +24,16 @@ private:
     Board board;
     Renderer renderer;
     HighscoreManager highscore;
+    std::mt19937 rng{std::random_device{}()};
 
     int score, level, delay, frame;
     bool running;
     // pause feature
     bool paused;
-    Piece curr, next;
+    Piece curr{}, next{};
     std::queue<int> pieceQueue; // For improved randomization
     // Implement "Hold Piece" Feature
-    Piece hold;
+    Piece hold{};
     bool holdUsedThisTurn;
     bool holding;
 

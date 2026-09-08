@@ -1,18 +1,13 @@
 #include "TetrisGame.hpp"
 #include <locale.h>
 #include <unistd.h>
-#include <cstdlib>
-#include <cstring>
 #include <algorithm>
-#include <random>
 
 // For improved randomization
 void TetrisGame::refillBag()
 {
     std::vector<int> bag = {0, 1, 2, 3, 4, 5, 6};
-    static std::random_device rd;
-    static std::mt19937 g(rd());
-    std::shuffle(bag.begin(), bag.end(), g);
+    std::shuffle(bag.begin(), bag.end(), rng);
     for (int i : bag)
         pieceQueue.push(i);
 }
@@ -24,7 +19,6 @@ TetrisGame::TetrisGame()
     board.reset();
 
     setlocale(LC_ALL, "");
-    srand((unsigned)time(0));
 
     initscr();
     if (has_colors())
@@ -442,6 +436,8 @@ bool TetrisGame::confirmAction(const std::string &prompt)
     int y = VISIBLE_HEIGHT / 2, x = WIDTH + 14;
     renderer.drawConfirmActionScreen(prompt);
     refresh();
+
+    nodelay(stdscr, FALSE); // block while waiting for y/n instead of busy-spinning
     int response;
     bool result = false;
     while (true)
@@ -458,6 +454,7 @@ bool TetrisGame::confirmAction(const std::string &prompt)
             break;
         }
     }
+    nodelay(stdscr, TRUE); // restore non-blocking mode for the main loop
 
     for (int dy = -1; dy <= 2; ++dy)
     {
@@ -491,8 +488,9 @@ void TetrisGame::gameOver()
         noecho();
 
         if (name_buf[0] == '\0')
-            strcpy(name_buf, "---");
-        highscore.set(name_buf, score);
+            highscore.set("---", score);
+        else
+            highscore.set(name_buf, score);
         infoDirty = true;
         highscore.save();
         Logger::getInstance().log(std::string("Name entered: [") + name_buf + "]");
@@ -530,6 +528,7 @@ void TetrisGame::gameOver()
             move(HEIGHT, WIDTH * 2 + 5);
             clrtoeol(); // Clear to end of line, requires #include <ncurses.h>
             refresh();
+            nodelay(stdscr, TRUE); // restore non-blocking mode, symmetric with the restart branch
             running = false;
             break;
         }
