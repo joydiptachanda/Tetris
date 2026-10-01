@@ -9,6 +9,8 @@ The same game is also available as a dependency-free HTML, CSS, and JavaScript
 app. Open `webapp/html/index.html` in a modern browser to play. The browser version keeps
 the classic controls and scoring, with click/touch controls; the personal best
 and theme preference are stored in browser local storage.
+When GitHub Pages publishes the repository root, `index.html` redirects to the
+browser game.
 
 | Key / button | Action |
 |--------------|--------|
