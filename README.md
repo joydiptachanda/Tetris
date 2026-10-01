@@ -3,6 +3,25 @@
 A terminal Tetris clone written in C++11, with its own hand-rolled terminal
 renderer (raw `termios` + ANSI escape codes) — no ncurses dependency.
 
+## Browser version
+
+The same game is also available as a dependency-free HTML, CSS, and JavaScript
+app. Open `webapp/html/index.html` in a modern browser to play. The browser version keeps
+the classic controls and scoring, with click/touch controls; the personal best
+and theme preference are stored in browser local storage.
+
+| Key / button | Action |
+|--------------|--------|
+| `←` / `→`   | Move left / right |
+| `↓`          | Soft drop |
+| `Z` / `X`    | Rotate left / right |
+| `Space`      | Hard drop |
+| `C`          | Hold piece |
+| `P`          | Pause |
+| `R`          | Start a new run |
+| `H`          | Clear personal best |
+| `Q`          | End the run |
+
 ## Features
 
 - Classic 10x20 playfield with a 7-bag randomizer (each of the 7 pieces
@@ -63,6 +82,21 @@ src/            Implementation
   Logger.*      Simple timestamped file logger (tetris.log)
   TetrisGame.*  Game loop orchestration: input, gravity, scoring, spawning
   main.cpp      Entry point, signal handling
+webapp/
+  html/index.html Browser game entry point
+  css/
+    theme.css       Theme tokens and global styles
+    layout.css      Page structure and responsive layout
+    components.css  Panels, controls, board, and dialogs
+    responsive.css  Breakpoint-specific overrides
+  js/
+    config.js       Board constants and piece definitions
+    storage.js      High-score and theme persistence
+    game.js         Game state, movement, scoring, and gravity
+    renderer.js     Canvas drawing and HUD rendering
+    theme.js        Theme toggle behavior
+    interface.js    Input, buttons, and dialogs
+    main.js         App setup and update loop
 ```
 
 ## Architecture

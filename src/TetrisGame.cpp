@@ -267,37 +267,41 @@ bool TetrisGame::handleRotateKey(int ch, Piece &temp)
     int old_rot = temp.rot;
     temp.rot = (ch == 'z') ? (temp.rot + 3) % 4 : (temp.rot + 1) % 4;
     bool kicked = false;
-    if (curr.shape == 0)
-    { // I piece
-        const int kick_offsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {-2, 0}, {2, 0}, {0, -1}, {0, 1}};
-        for (const auto &o : kick_offsets)
-        {
-            Piece ktemp = temp;
-            ktemp.x += o[0];
-            ktemp.y += o[1];
-            if (board.check(ktemp))
+    int firstOccupiedRow = 4;
+    for (int dy = 0; dy < 4 && firstOccupiedRow == 4; ++dy)
+        for (int dx = 0; dx < 4; ++dx)
+            if (TETROMINO_SHAPES[temp.shape][temp.rot][dy][dx])
             {
-                temp = ktemp;
-                kicked = true;
+                firstOccupiedRow = dy;
                 break;
             }
-        }
-    }
-    else
+    const int firstVisibleY = 2 - firstOccupiedRow;
+    const int lineKickOffsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {-2, 0}, {2, 0}, {0, -1}, {0, 1}};
+    const int standardKickOffsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {0, -1}, {0, 1}};
+    const int (*kickOffsets)[2] = temp.shape == 0 ? lineKickOffsets : standardKickOffsets;
+    const int kickCount = temp.shape == 0 ? 7 : 5;
+    for (int i = 0; i < kickCount; ++i)
     {
-        const int kick_offsets[][2] = {{0, 0}, {1, 0}, {-1, 0}, {0, -1}, {0, 1}};
-        for (const auto &o : kick_offsets)
+        Piece candidate = temp;
+        candidate.x += kickOffsets[i][0];
+        candidate.y += kickOffsets[i][1];
+        if (!board.check(candidate))
+            continue;
+        if (candidate.y < firstVisibleY)
         {
-            Piece ktemp = temp;
-            ktemp.x += o[0];
-            ktemp.y += o[1];
-            if (board.check(ktemp))
+            Piece visibleCandidate = candidate;
+            visibleCandidate.y = firstVisibleY;
+            if (board.check(visibleCandidate))
             {
-                temp = ktemp;
+                temp = visibleCandidate;
                 kicked = true;
                 break;
             }
+            continue;
         }
+        temp = candidate;
+        kicked = true;
+        break;
     }
     if (!kicked)
         temp.rot = old_rot;

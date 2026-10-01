@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#e9eee8">
+    <title>Tetris / Classic Stack</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+    <script src="../js/config.js" defer></script>
+    <script src="../js/storage.js" defer></script>
+    <script src="../js/game.js" defer></script>
+    <script src="../js/renderer.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+    <script src="../js/interface.js" defer></script>
+    <script src="../js/main.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="masthead">
+        <a class="brand" href="./" aria-label="Tetris Classic Stack">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="brand-copy">
+            <span class="brand-name">TETRIS</span>
+            <span class="brand-edition">CLASSIC STACK / 01</span>
+          </span>
+        </a>
+        <div class="masthead-tools">
+          <div class="record-banner" aria-label="Personal best">
+            <span class="eyebrow">PERSONAL BEST</span>
+            <strong id="record-score">000000</strong>
+            <span id="record-name" class="record-name">---</span>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">☾</button>
+        </div>
+      </header>
+
+      <main>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ARCADE / SOLO</p>
+            <h1>Make room<br class="mobile-break"> for one more.</h1>
+          </div>
+          <div class="edition-stamp"><span>EST.</span><strong>1984</strong><span>ENDLESS PLAY</span></div>
+        </div>
+
+        <section class="game-layout" aria-label="Tetris game">
+          <aside class="rail rail-left" aria-label="Piece queue">
+            <section class="piece-panel">
+              <div class="panel-heading"><span class="panel-index">01</span><h2>HOLD</h2><kbd>C</kbd></div>
+              <div class="preview-well"><canvas id="hold-preview" width="120" height="96" aria-label="Held piece"></canvas></div>
+              <div id="hold-status" class="panel-foot">READY TO HOLD</div>
+            </section>
+            <section class="piece-panel next-panel">
+              <div class="panel-heading"><span class="panel-index">02</span><h2>NEXT</h2><span class="queue-mark" aria-hidden="true">···</span></div>
+              <div class="preview-well"><canvas id="next-preview" width="120" height="96" aria-label="Next piece"></canvas></div>
+              <div class="panel-foot">UP NEXT</div>
+            </section>
+            <button class="text-action" type="button" data-action="clear-record" title="Clear the saved high score">
+              <span aria-hidden="true">×</span> CLEAR RECORD
+            </button>
+          </aside>
+
+          <section class="board-column" aria-label="Playfield">
+            <div class="board-heading">
+              <span class="eyebrow">PLAYFIELD</span>
+              <span id="game-status" class="status-indicator"><i></i> IN PLAY</span>
+            </div>
+            <div class="board-frame">
+              <canvas id="game-board" width="300" height="600" tabindex="0" aria-label="Tetris playfield"></canvas>
+              <div id="board-overlay" class="board-overlay" hidden>
+                <div class="overlay-copy">
+                  <span class="overlay-kicker">CLASSIC STACK</span>
+                  <h2 id="overlay-title">PAUSED</h2>
+                  <button id="overlay-button" type="button" data-action="resume">RESUME <span aria-hidden="true">→</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="board-caption"><span>10 × 20 WELL</span><span id="line-count">00 LINES</span><span>7-BAG RANDOMIZER</span></div>
+          </section>
+
+          <aside class="rail rail-right" aria-label="Score and controls">
+            <section class="score-panel">
+              <div class="panel-heading"><span class="panel-index">03</span><h2>SESSION</h2><span class="live-dot" aria-hidden="true"></span></div>
+              <div class="score-block">
+                <span class="eyebrow">SCORE</span>
+                <strong id="score-value">000000</strong>
+              </div>
+              <div class="stat-row"><span>LEVEL</span><strong id="level-value">01</strong></div>
+              <div class="stat-row"><span>LINES</span><strong id="lines-value">00</strong></div>
+              <div class="stat-row highscore-row"><span>BEST</span><strong id="side-record">000000</strong></div>
+            </section>
+
+            <section class="control-panel">
+              <div class="panel-heading"><span class="panel-index">04</span><h2>MOVE</h2></div>
+              <div class="move-controls" aria-label="Move piece">
+                <button type="button" class="icon-button" data-action="rotate-left" aria-label="Rotate left" title="Rotate left (Z)">↶</button>
+                <button type="button" class="icon-button" data-action="soft-drop" aria-label="Soft drop" title="Soft drop (Down arrow)">↓</button>
+                <button type="button" class="icon-button" data-action="rotate-right" aria-label="Rotate right" title="Rotate right (X)">↷</button>
+                <button type="button" class="icon-button" data-action="left" aria-label="Move left" title="Move left (Left arrow)">←</button>
+                <button type="button" class="icon-button" data-action="hard-drop" aria-label="Hard drop" title="Hard drop (Space)">⤓</button>
+                <button type="button" class="icon-button" data-action="right" aria-label="Move right" title="Move right (Right arrow)">→</button>
+              </div>
+              <div class="utility-controls">
+                <button type="button" class="utility-button" data-action="hold" title="Hold piece (C)"><span>C</span> HOLD</button>
+                <button type="button" class="utility-button" data-action="pause" title="Pause or resume (P)"><span>Ⅱ</span> PAUSE</button>
+              </div>
+            </section>
+
+            <section class="session-actions" aria-label="Session actions">
+              <button type="button" class="action-button" data-action="restart"><span>↻</span> NEW RUN <kbd>R</kbd></button>
+              <button type="button" class="action-button" data-action="quit"><span>↗</span> END RUN <kbd>Q</kbd></button>
+            </section>
+          </aside>
+        </section>
+      </main>
+
+      <footer class="page-footer"><span>BUILT FOR THE NEXT PIECE</span><span>← → MOVE <b>·</b> Z / X ROTATE <b>·</b> SPACE DROP <b>·</b> P PAUSE</span></footer>
+    </div>
+
+    <dialog id="confirm-dialog" class="dialog-shell">
+      <div class="dialog-content">
+        <span class="eyebrow">ARE YOU SURE?</span>
+        <h2 id="confirm-title">NEW RUN?</h2>
+        <p id="confirm-message">Your current run will be lost.</p>
+        <div class="dialog-actions">
+          <button type="button" class="quiet-button" data-dialog-cancel>KEEP PLAYING</button>
+          <button type="button" class="primary-button" id="confirm-accept">CONFIRM <span aria-hidden="true">→</span></button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="record-dialog" class="dialog-shell">
+      <form id="record-form" class="dialog-content">
+        <span class="eyebrow">NEW PERSONAL BEST</span>
+        <h2>Put your name on it.</h2>
+        <label class="name-label" for="record-input">NAME</label>
+        <input id="record-input" name="name" type="text" maxlength="31" autocomplete="nickname" placeholder="Your name" aria-describedby="record-points">
+        <p id="record-points" class="record-points">SCORE <strong id="record-points-value">000000</strong></p>
+        <div class="dialog-actions">
+          <button type="button" class="quiet-button" data-skip-record>SKIP</button>
+          <button type="submit" class="primary-button">SAVE RECORD <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
